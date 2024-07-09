@@ -92,7 +92,7 @@ proj = osr.SpatialReference(wkt=ds.GetProjection())
 assert proj.GetAttrValue('AUTHORITY',1) == "4326"
 ds = ds.FlushCache()
 
-fps1a = wapor_map(region, "L2-AETI-D", period, folder, seperate_unscale=True)
+fps1a = wapor_map(region, "L2-AETI-D", period, folder, separate_unscale=True)
 ds = gdal.Open(fps1a[1])
 assert ds.RasterCount == 1
 band = ds.GetRasterBand(1)
@@ -126,7 +126,7 @@ proj = osr.SpatialReference(wkt=ds.GetProjection())
 assert proj.GetAttrValue('AUTHORITY',1) == "4326"
 ds = ds.FlushCache()
 
-fps1b = wapor_map(region, "L2-AETI-D", period, folder, unit_conversion = "dekad", seperate_unscale=True)
+fps1b = wapor_map(region, "L2-AETI-D", period, folder, unit_conversion = "dekad", separate_unscale=True)
 ds = gdal.Open(fps1b[1])
 assert ds.RasterCount == 1
 band = ds.GetRasterBand(1)

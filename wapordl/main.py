@@ -701,7 +701,7 @@ def wapor_dl(region, variable,
 def wapor_map(region, variable, period, folder, 
               unit_conversion = "none",
               overview = "NONE", extension = ".tif", 
-              seperate_unscale = False):
+              separate_unscale = False):
 
     ## Check if raw-data will be downloaded.
     if overview != "NONE":
@@ -724,7 +724,7 @@ def wapor_map(region, variable, period, folder,
                   req_stats = None,
                   )
 
-    if extension == ".tif" and seperate_unscale:
+    if extension == ".tif" and separate_unscale:
         logging.info("Splitting single GeoTIFF into multiple unscaled files.")
         folder = os.path.split(fp)[0]
         ds = gdal.Open(fp)
@@ -751,8 +751,8 @@ def wapor_map(region, variable, period, folder,
             ...
         return fps
     elif extension != ".tif":
-        if seperate_unscale:
-            logging.warning(f"The `seperate` option only works with `.tif` extension, not with `{extension}`.")
+        if separate_unscale:
+            logging.warning(f"The `separate_unscale` option only works with `.tif` extension, not with `{extension}`.")
         logging.info(f"Converting from `.tif` to `{extension}`.")
         toptions = {".nc": {"creationOptions": ["COMPRESS=DEFLATE", "FORMAT=NC4C"]}}
         options = gdal.TranslateOptions(
