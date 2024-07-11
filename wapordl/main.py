@@ -245,7 +245,7 @@ def make_annual_dates(period, max_date = None):
     period_[0] = pd.Timestamp(f"{period_[0].year}-01-01")
     if isinstance(max_date, pd.Timestamp):
         period_[1] = min(period_[1], max_date)
-    x1 = pd.date_range(period_[0], period_[1], freq = "A-JAN")
+    x1 = pd.date_range(period_[0], period_[1], freq = "YE-JAN")
     x_filtered = [pd.Timestamp(x_) for x_ in x1]
     return x_filtered
 
@@ -580,7 +580,7 @@ def wapor_dl(region, variable,
             region = list(region_shape.bounds)
     # GEOJSON
     elif isinstance(region, str):
-        if not os.path.isfile(region) or os.path.splitext(region)[-1] != ".geojson":
+        if not os.path.isfile(region):
             raise ValueError(f"Geojson file not found.") # NOTE: TESTED
         else:
             region_code = os.path.split(region)[-1].replace(".geojson", "")
