@@ -5,7 +5,7 @@ import shapely
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from osgeo import gdal, gdalconst
+from osgeo import gdal, gdalconst, ogr
 from osgeo_utils import gdal_calc
 from string import ascii_lowercase, ascii_uppercase
 gdal.UseExceptions()
@@ -82,23 +82,32 @@ AGERA5_VARS = {
     "AGERA5-PF-A":      {"long_name": "Precipitation", "units": "mm/year", "source": "agERA5"},
 }
 
-def threed_to_twod(region):
-    from osgeo_utils.samples import ogr2ogr
-    fh_2d =  region.replace(".geojson", "_2D.geojson")
-    if os.path.isfile(fh_2d):
-        try:
-            os.remove(fh_2d)
-        except PermissionError:
-            while os.path.isfile(fh_2d):
-                fh_2d = fh_2d.replace(".geojson", "_.geojson")
-    args = ["ogr2ogr",
-            fh_2d,
-            region, 
-            "-dim", "2", 
-            "-f", "GeoJSON",
-            ]
-    _ = ogr2ogr.main(args = args)
-    return fh_2d
+def reproject_vector(fh, epsg = 4326):
+
+    ext = os.path.splitext(fh)[-1]
+    out_fh = fh.replace(ext, f"_reprojected.geojson")
+
+    options = gdal.VectorTranslateOptions(
+        dstSRS = f"EPSG:{epsg}",
+        format = "GeoJSON",
+        dim = "XY",
+    )
+    x = gdal.VectorTranslate(out_fh, fh, options = options)
+    x.FlushCache()
+    x = None
+
+    return out_fh
+
+def check_vector(fh):
+    with ogr.Open(fh) as ds:
+        driver = ds.GetDriver()
+        layer = ds.GetLayer()
+        ftr = layer.GetFeature(0)
+        geom = ftr.geometry()
+        is_two_d = geom.CoordinateDimension() == 2
+        spatialRef = layer.GetSpatialRef()
+        epsg = spatialRef.GetAuthorityCode(None)
+    return int(epsg), getattr(driver, "name", None), is_two_d
 
 def guess_l3_region(region_shape):
 
@@ -544,6 +553,7 @@ def wapor_dl(region, variable,
     level, var_code, tres = variable.split("-")
 
     ## Check if region is valid.
+    # L3-CODE
     if all([isinstance(region, str), len(region) == 3]):
         
         if not region == region.upper():
@@ -568,24 +578,27 @@ def wapor_dl(region, variable,
             region_shape = shapely.Polygon(np.array(L3_BBS[region]))
             region_code = region[:]
             region = list(region_shape.bounds)
-
+    # GEOJSON
     elif isinstance(region, str):
         if not os.path.isfile(region) or os.path.splitext(region)[-1] != ".geojson":
             raise ValueError(f"Geojson file not found.") # NOTE: TESTED
         else:
             region_code = os.path.split(region)[-1].replace(".geojson", "")
-            try:
-                with open(region,'r', encoding="utf-8") as f:
-                    region_shape = shapely.from_geojson(f.read())
-            except shapely.GEOSException as e:
-                if "Expected two coordinates found more than two" in str(e):
-                    logging.warning("Shapely currently does not support 3D geometries, (see https://shapely.readthedocs.io/en/latest/reference/shapely.from_geojson.html#shapely.from_geojson), trying to convert to 2D geojson.")
-                    region = threed_to_twod(region)
-                    with open(region,'r', encoding="utf-8") as f:
-                        region_shape = shapely.from_geojson(f.read())
-                else:
-                    raise e
+            # Check if vector file is in good shape.
+            epsg, driver, is_two_d = check_vector(region)
+            if not np.all([epsg == 4326, driver == 'GeoJSON', is_two_d]):
+                ext_ = os.path.splitext(region)[-1]
+                fn_ = os.path.split(region)[-1]
+                out_fn_ = fn_.replace(ext_, "_reprojected.geojson")
+                dim_ = {True: "2D", False: "3D"}[is_two_d]
+                logging.warning(f"Reprojecting `{fn_}` [EPSG:{epsg}, {dim_}] to `{out_fn_}` [EPSG:4326, 2D].")
+                region = reproject_vector(region, epsg = 4326)
+            # Open the geojson.
+            with open(region,'r', encoding="utf-8") as f:
+                region_shape = shapely.from_geojson(f.read())
+        
         l3_region = None
+    # BB
     elif isinstance(region, list):
         if not all([region[2] > region[0], region[3] > region[1]]):
             raise ValueError(f"Invalid bounding box.") # NOTE: TESTED
@@ -823,25 +836,27 @@ if __name__ == "__main__":
     # req_stats = ["minimum", "maximum", "mean"]
     # extension = ".nc"
     # unit_conversion = "dekad"
-    folder = r"/Users/hmcoerver/Local/test"
+    folder = r"/Users/hmcoerver/Local/testX"
 
-    region = "MBL"
+    # region = "MBL"
+    region = r"/Users/hmcoerver/Library/Mobile Documents/com~apple~CloudDocs/GitHub/wapordl/wapordl/test_data/test_MUV_UTM36N.geojson"
     
-    # variable = "L1-PCP-E"
+    variable = "L1-AETI-D"
     # variable = "L3-T-A"
-    variable = "AGERA5-TMAX-E"
+    # variable = "AGERA5-TMAX-E"
 
     # period = ["2023-01-01", "2023-01-04"]
-    period = ["2024-02-01", "2024-06-01"]
-    unit_conversion = "dekad"
-    overview = "NONE"
-    extension = ".tif"
-    req_stats = None
+    period = ["2024-02-01", "2024-03-01"]
+    # unit_conversion = "dekad"
+    unit_conversion = None
+    # overview = "NONE"
+    # extension = ".tif"
+    # req_stats = None
 
-    check_urls = True
+    # check_urls = True
 
     # out = l3_bounding_boxes(variable = "L3-T-A")
 
-    # map1 = wapor_map(region, variable, period, folder, unit_conversion=unit_conversion)
+    map1 = wapor_map(region, variable, period, folder)
     # map2 = wapor_map(region, variable, period, folder, unit_conversion=unit_conversion, extension=extension)
 
