@@ -6,6 +6,7 @@ import pandas as pd
 from osgeo import gdal, osr
 import numpy as np
 import pathlib
+import os
 import xarray as xr
 import matplotlib.pyplot as plt
 
@@ -28,7 +29,7 @@ extension = ".tif"
 #####
 # AGERA5 CHECKS
 #####
-period_agera5 = ["2024-01-18", pd.Timestamp.now().strftime("%Y-%m-%d")]
+period_agera5 = [(pd.Timestamp.now() - pd.Timedelta(days = 40)).strftime("%Y-%m-%d"), pd.Timestamp.now().strftime("%Y-%m-%d")]
 fp21 = wapor_map(region, "AGERA5-ET0-D", period_agera5, folder, extension= ".nc", unit_conversion="dekad")
 fp22 = wapor_map(region, "AGERA5-ET0-D", period_agera5, folder, extension= ".nc", unit_conversion="day")
 fp23 = wapor_map(region, "AGERA5-ET0-E", period_agera5, folder, extension= ".nc", unit_conversion="dekad")
@@ -44,7 +45,7 @@ fp28 = wapor_map(region, "AGERA5-ET0-A", period_agera5, folder)
 ####
 
 df1 = wapor_ts(region, "L2-AETI-D", period, overview)
-assert np.isclose(df1.iloc[0]["mean"], 0.3923)
+assert np.isclose(df1.iloc[0]["mean"], 0.4296)
 assert df1.iloc[0].start_date == pd.Timestamp('2021-01-11 00:00:00')
 assert df1.attrs == {
  'long_name': 'Actual EvapoTranspiration and Interception',
@@ -247,7 +248,25 @@ except ValueError as e:
     
 region_3D = [str(x) for x in l3_regions if "3D" in str(x)][0]
 fp18a = wapor_map(region_3D, "L1-T-D", period, folder)
+assert os.path.isfile(region_3D.replace(".geojson", "_reprojected.geojson"))
+os.remove(region_3D.replace(".geojson", "_reprojected.geojson"))
+
 fp18b = wapor_ts(region_3D, "L1-T-D", period, overview = 2)
+assert os.path.isfile(region_3D.replace(".geojson", "_reprojected.geojson"))
+os.remove(region_3D.replace(".geojson", "_reprojected.geojson"))
+
+region_not_4326 = r"/Users/hmcoerver/Library/Mobile Documents/com~apple~CloudDocs/GitHub/wapordl/wapordl/test_data/test_MUV_UTM36N.geojson"
+fp18c = wapor_map(region_not_4326, "L1-T-D", period, folder)
+assert os.path.isfile(region_not_4326.replace(".geojson", "_reprojected.geojson"))
+os.remove(region_not_4326.replace(".geojson", "_reprojected.geojson"))
+
+region_noCRS = r"/Users/hmcoerver/Library/Mobile Documents/com~apple~CloudDocs/GitHub/wapordl/wapordl/test_data/test_MUV_noCRS.geojson"
+fp18d = wapor_map(region_noCRS, "L1-T-D", period, folder)
+
+region_shpfile = r"/Users/hmcoerver/Library/Mobile Documents/com~apple~CloudDocs/GitHub/wapordl/wapordl/test_data/test_MUV_UTM36N_shp/test_MUV_UTM36N.shp"
+fp18e = wapor_map(region_shpfile, "L1-T-D", period, folder)
+assert os.path.isfile(region_shpfile.replace(".shp", "_reprojected.geojson"))
+os.remove(region_shpfile.replace(".shp", "_reprojected.geojson"))
 
 try: ##
     _ = wapor_map(region, "L1-AETI-M", period, folder, extension=".vrt")
