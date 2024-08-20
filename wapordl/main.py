@@ -149,7 +149,10 @@ def collect_responses(url, info = ["code"]):
         else:
             output.append(data)
     if isinstance(info, list):
-        output = sorted(output)
+        try:
+            output = sorted(output)
+        except TypeError:
+            output = output
     return output
 
 def date_func(url, tres):
@@ -845,10 +848,11 @@ def wapor_ts(region, variable, period, overview,
 
     return df
 
-def __l3_codes__(variable = "L3-T-A"):
-    public_urls = generate_urls_v3(variable, period = ["2019-01-01", "2019-02-01"])
-    valids = np.unique([os.path.split(x)[-1].split(".")[2] for x in public_urls])
-    return valids.tolist()
+def l3_codes():
+    mapset_url = "https://data.apps.fao.org/gismgr/api/v2/catalog/workspaces/WAPOR-3/mosaicsets/L3-T-A/rasters?filter="
+    x = collect_responses(mapset_url, info = ["grid"])
+    valids = {x_[0]["tile"]["code"]: x_[0]["tile"]["description"] for x_ in x}
+    return valids
 
 def l3_bounding_boxes(variable = "L3-T-A", l3_region = None):
     urls = generate_urls_v3(variable, l3_region = l3_region, period = ["2019-01-01", "2019-02-01"])
@@ -861,19 +865,13 @@ def l3_bounding_boxes(variable = "L3-T-A", l3_region = None):
 
 if __name__ == "__main__":
 
-    # region = "/Users/hmcoerver/Library/Mobile Documents/com~apple~CloudDocs/GitHub/wapordl/wapordl/test_data/test_MUV_UTM36N.geojson"
-    # variable = "L1-AETI-D"
-    # overview = "NONE"
-
-    # period = ["2024-02-01", "2024-03-02"]
+    variable = "L1-RET-D"
     folder = r"/Users/hmcoerver/Local/testX"
-
-    # unit_conversion = "dekad"
-
-    # wapor_map(region, variable, period, folder, unit_conversion="dekad")
-
-    periodX = ["2021-01-01", "2021-01-31"]
-    overview = 3
-    region = '/Users/hmcoerver/Library/Mobile Documents/com~apple~CloudDocs/GitHub/wapordl/wapordl/test_data/1237500.geojson'
-    # df_month_ref = wapor_map(region, "L2-AETI-D", periodX, folder, overview = 3)
-    df_month_day = wapor_map(region, "L2-AETI-M", periodX, folder, unit_conversion = "day", overview = 3)
+    period = ["2021-01-01", "2021-01-31"]
+    overview = "NONE"
+    # region = '/Users/hmcoerver/Library/Mobile Documents/com~apple~CloudDocs/GitHub/wapordl/wapordl/test_data/1237500.geojson'
+    region1 = [9.2153, 12.1095, 9.8517, 12.6154] # 3x3 pixels
+    region2= [9.4231, 12.2881,9.6619, 12.4505] # 1x1 pixels
+    
+    # x1 = wapor_map(region1, variable, period, os.path.join(folder, "3x3"), overview = overview)
+    # x2 = wapor_map(region2, variable, period, os.path.join(folder, "1x1"), overview = overview)
