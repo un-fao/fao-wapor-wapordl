@@ -11,6 +11,15 @@ from string import ascii_lowercase, ascii_uppercase
 gdal.UseExceptions()
 logging.basicConfig(encoding='utf-8', level=logging.INFO, format='%(levelname)s: %(message)s')
 
+try:
+    import xarray as xr
+    import rioxarray
+    use_xarray = True
+    # raise ImportError
+except ImportError:
+    logging.info("Consider installing `xarray` and `rioxarray` for faster unit conversions.")
+    use_xarray = False
+
 L3_BBS = {
     'AWA': [[39.1751869, 8.9148245], [39.1749088, 8.3098793], [40.0254231, 8.3085969], [40.0270531, 8.9134473], [39.1751869, 8.9148245]], 
     'BKA': [[35.7339813, 34.0450172], [35.7204902, 33.6205171], [36.2189392, 33.6085397], [36.2348925, 34.0328476], [35.7339813, 34.0450172]], 
@@ -340,10 +349,13 @@ def __make_band_names__(length):
 
 def unit_convertor(urls, in_fn, out_fn, unit_conversion, warp, coptions = []):
 
+    global use_xarray
+
     input_files = dict()
     input_bands = dict()
     calc = list()
     should_convert = list()
+    conversion_factors = list()
     letters = __make_band_names__(len(urls))
 
     if "AGERA5" in urls[0][1]:
@@ -379,6 +391,7 @@ def unit_convertor(urls, in_fn, out_fn, unit_conversion, warp, coptions = []):
             md["units_conversion_factor"] = "N/A"
             md["original_units"] = "N/A"
             should_convert.append(False)
+            conversion_factors.append(1)
         else:
             conversion = {
                 ("day", "day"): 1,
@@ -400,6 +413,7 @@ def unit_convertor(urls, in_fn, out_fn, unit_conversion, warp, coptions = []):
             }[(source_unit_time, unit_conversion)]
             calc.append(f"{letter}.astype(numpy.float64)*{conversion}")
             should_convert.append(True)
+            conversion_factors.append(conversion)
             md["units"] = f"{source_unit_q}/{unit_conversion}"
             md["units_conversion_factor"] = conversion
             md["original_units"] = source_unit
@@ -415,26 +429,45 @@ def unit_convertor(urls, in_fn, out_fn, unit_conversion, warp, coptions = []):
     logging.debug(f"\nSCALES: {scales}\nOFFSETS: {offsets}")
 
     if all(should_convert) and not all(conversion_is_one):
-        logging.info(f"Converting units from [{source_unit}] to [{source_unit_q}/{unit_conversion}].")
+        
+        logging.info(f"Converting units from [{source_unit}] to [{source_unit_q}/{unit_conversion}] (use_xarray = {use_xarray}).")
+        
         ndv = warp.GetRasterBand(1).GetNoDataValue()
-        warp = gdal_calc.Calc(
-            calc = calc,
-            outfile = out_fn,
-            overwrite = True,
-            creation_options=coptions,
-            quiet = True,
-            type = dtype,
-            NoDataValue = ndv,
-            **input_files,
-            **input_bands,
-            )
-        # TODO make bug report on GDAL for gdal_calc removing scale/offset factors
-        for i, (scale, offset) in enumerate(zip(scales, offsets)):
-            warp.GetRasterBand(i+1).SetScale(scale)
-            warp.GetRasterBand(i+1).SetOffset(offset)
+        if use_xarray:
+            ds = xr.open_dataset(in_fn, mask_and_scale=False, decode_coords="all")
+            xr_conv = xr.DataArray(conversion_factors, coords = {"band": ds["band"]})
+            ndv_ = ds["band_data"].attrs["_FillValue"]
 
-        warp.FlushCache()
-        filen = out_fn
+            da = xr.where(ds["band_data"] == ndv_, ndv_, ds["band_data"] * xr_conv)
+            da = np.round(da, 0)
+
+            ds_out = da.to_dataset("band")
+            for i, (scale, (md, _)) in enumerate(zip(scales, urls)):
+                ds_out[i+1].attrs = md
+                ds_out[i+1] = ds_out[i+1].rio.write_nodata(ndv)
+                ds_out[i+1].attrs["scale_factor"] = scale
+
+            ds_out = ds_out.rio.write_crs(ds.rio.crs)
+            ds_out.rio.to_raster(out_fn, compress = "LZW", dtype = {5: "int32", 7: "float64"}[dtype])
+            filen = out_fn
+        else:
+            warp = gdal_calc.Calc(
+                calc = calc,
+                outfile = out_fn,
+                overwrite = True,
+                creation_options=coptions,
+                quiet = True,
+                type = dtype,
+                NoDataValue = ndv,
+                **input_files,
+                **input_bands,
+                )
+            # TODO make bug report on GDAL for gdal_calc removing scale/offset factors
+            for i, (scale, offset) in enumerate(zip(scales, offsets)):
+                warp.GetRasterBand(i+1).SetScale(scale)
+                warp.GetRasterBand(i+1).SetOffset(offset)
+            warp.FlushCache()
+            filen = out_fn
     else:
         if all(conversion_is_one):
             logging.info(f"Units are already as requested, no conversion needed.")
@@ -828,35 +861,19 @@ def l3_bounding_boxes(variable = "L3-T-A", l3_region = None):
 
 if __name__ == "__main__":
 
-    # region = r"/Users/hmcoerver/Library/Mobile Documents/com~apple~CloudDocs/GitHub/wapordl/wapordl/test_data/1237500.geojson"
+    # region = "/Users/hmcoerver/Library/Mobile Documents/com~apple~CloudDocs/GitHub/wapordl/wapordl/test_data/test_MUV_UTM36N.geojson"
     # variable = "L1-AETI-D"
-    # period = ["2021-01-12", "2021-01-28"]
-    # overview = 3
-    # unit_conversion = "none"
-    # req_stats = ["minimum", "maximum", "mean"]
-    # extension = ".nc"
-    # unit_conversion = "dekad"
+    # overview = "NONE"
+
+    # period = ["2024-02-01", "2024-03-02"]
     folder = r"/Users/hmcoerver/Local/testX"
 
-    # region = "MBL"
-    region = r"/Users/hmcoerver/Library/Mobile Documents/com~apple~CloudDocs/GitHub/wapordl/wapordl/test_data/test_MUV_UTM36N.geojson"
-    
-    variable = "L1-AETI-D"
-    # variable = "L3-T-A"
-    # variable = "AGERA5-TMAX-E"
-
-    # period = ["2023-01-01", "2023-01-04"]
-    period = ["2024-02-01", "2024-03-01"]
     # unit_conversion = "dekad"
-    unit_conversion = None
-    # overview = "NONE"
-    # extension = ".tif"
-    # req_stats = None
 
-    # check_urls = True
+    # wapor_map(region, variable, period, folder, unit_conversion="dekad")
 
-    # out = l3_bounding_boxes(variable = "L3-T-A")
-
-    map1 = wapor_map(region, variable, period, folder)
-    # map2 = wapor_map(region, variable, period, folder, unit_conversion=unit_conversion, extension=extension)
-
+    periodX = ["2021-01-01", "2021-01-31"]
+    overview = 3
+    region = '/Users/hmcoerver/Library/Mobile Documents/com~apple~CloudDocs/GitHub/wapordl/wapordl/test_data/1237500.geojson'
+    # df_month_ref = wapor_map(region, "L2-AETI-D", periodX, folder, overview = 3)
+    df_month_day = wapor_map(region, "L2-AETI-M", periodX, folder, unit_conversion = "day", overview = 3)

@@ -1,4 +1,5 @@
 import wapordl
+import wapordl.main
 module_path = wapordl.__path__[0]
 assert "conda" not in module_path
 from wapordl import wapor_ts, wapor_map, wapor_dl, date_func, collect_metadata, generate_urls_v3
@@ -26,6 +27,21 @@ variable = "L2-AETI-D"
 l3_region = "BKA"
 extension = ".tif"
 
+wapordl.main.use_xarray = False
+xx_1 = wapor_map(region, "L2-AETI-M", period, os.path.join(folder, "no_xarray"), unit_conversion = "day", overview = 3)
+wapordl.main.use_xarray = True
+xx_2 = wapor_map(region, "L2-AETI-M", period, os.path.join(folder, "ya_xarray"), unit_conversion = "day", overview = 3)
+x1 = xr.open_dataset(xx_1)
+x2 = xr.open_dataset(xx_2)
+assert x1.mean() == x2.mean()
+
+wapordl.main.use_xarray = False
+dff_1 = wapor_ts(region, "L2-AETI-M", period, unit_conversion = "day", overview = 3)
+wapordl.main.use_xarray = True
+dff_2 = wapor_ts(region, "L2-AETI-M", period, unit_conversion = "day", overview = 3)
+assert dff_1.equals(dff_2)
+
+wapordl.main.use_xarray = True
 #####
 # AGERA5 CHECKS
 #####
@@ -451,7 +467,7 @@ array = band.ReadAsArray() * scale
 array[array == ndv*scale] = np.nan
 mean = np.nanmean(array)
 md = band.GetMetadata()
-assert md == {'end_date': '2021-01-10',
+assert np.all([md[k] == v for k,v in {'end_date': '2021-01-10',
  'long_name': 'Actual EvapoTranspiration and Interception',
  'number_of_days': '10',
  'original_units': 'mm/day',
@@ -459,7 +475,7 @@ assert md == {'end_date': '2021-01-10',
  'start_date': '2021-01-01',
  'temporal_resolution': 'Dekad',
  'units': 'mm/dekad',
- 'units_conversion_factor': '10'}
+ 'units_conversion_factor': '10'}.items()])
 assert mean > 0.0
 assert mean < 25.0
 proj = osr.SpatialReference(wkt=ds.GetProjection())
