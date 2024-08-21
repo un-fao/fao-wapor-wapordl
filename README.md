@@ -7,9 +7,18 @@ Download data from the WaPOR3 dataset as spatially aggregated timeseries or as s
 ## Installation
 
 ### Conda (recommended)
-`conda install -c conda-forge wapordl`
+`xarray` and `rioxarray` are optional dependencies, but greatly 
+improve performance when converting units.
 
-### Pip (make sure GDAL is already installed)
+`conda install -c conda-forge wapordl xarray rioxarray`
+
+### Pip (make sure GDAL is already installed in your environment)
+To install with `xarray` and `rioxarray` do:
+
+`pip install 'wapordl[full]'`
+
+Otherwise, the following suffices:
+
 `pip install wapordl`
 
 ## Usage
@@ -122,7 +131,7 @@ fp = wapor_map(region, variable, period, folder, unit_conversion = "year")
 ## Upcoming
 
 - Automatic overview selection based on the size of the shape.
-- Docstrings for all functions.
+- ~~Docstrings for all functions.~~ ✅
 - ~~Option to split multiband GeoTIFF into single band files.~~ ✅
 - ~~Support for variables with daily resolution (i.e. `L1-PCP-E` and `L1-RET-E`).~~ ✅
 - ~~Easily download a lower level variable for a level-3 region.~~ ✅
