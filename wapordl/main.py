@@ -149,7 +149,14 @@ def check_vector(fh: str) -> tuple:
     spatialRef = layer.GetSpatialRef()
     epsg = spatialRef.GetAuthorityCode(None)
 
-    ds = ds.Close()
+    try:
+        ds = ds.Close()
+    except AttributeError as e:
+        if str(e) == "'DataSource' object has no attribute 'Close'":
+            ds = ds.Release()
+        else:
+            raise e
+
     return int(epsg), getattr(driver, "name", None), is_two_d
 
 def guess_l3_region(region_shape: shapely.Polygon) -> str:
