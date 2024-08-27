@@ -140,7 +140,7 @@ def check_vector(fh: str) -> tuple:
     with ogr.Open(fh) as ds:
         driver = ds.GetDriver()
         layer = ds.GetLayer()
-        ftr = layer.GetFeature(0)
+        ftr = layer.GetNextFeature()
         geom = ftr.geometry()
         is_two_d = geom.CoordinateDimension() == 2
         spatialRef = layer.GetSpatialRef()

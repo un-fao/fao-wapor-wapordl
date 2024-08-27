@@ -244,6 +244,9 @@ proj = osr.SpatialReference(wkt=ds.GetProjection())
 assert proj.GetAttrValue('AUTHORITY',1) == "32636"
 ds = ds.FlushCache()
 
+region_bekaa = [str(x) for x in l3_regions if "bekaa" in str(x)][0]
+fpXX = wapor_map(region_bekaa, "L1-T-D", period, folder)
+
 region_GEZ = [str(x) for x in l3_regions if "GEZ" in str(x)][0]
 fp16 = wapor_map(region_GEZ, "L3-T-D", period, folder)
 

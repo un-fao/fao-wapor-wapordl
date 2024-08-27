@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name = 'wapordl',
-    version = '0.12.0',
+    version = '0.12.1',
     packages = find_packages(include = ['wapordl', 'wapordl.*']),
     include_package_data=True,
     python_requires='>=3.7',
@@ -14,8 +14,4 @@ setup(
         "shapely>=2.0.0",
         "tqdm",
     ],
-    extras_require = {"full": [
-        "xarray",
-        "rioxarray",
-    ]},
 )
