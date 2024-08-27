@@ -137,14 +137,19 @@ def check_vector(fh: str) -> tuple:
         Information about the input file, first value is EPSG code (int), second is
         driver name, third is True if coordinates are 2D.
     """
-    with ogr.Open(fh) as ds:
-        driver = ds.GetDriver()
-        layer = ds.GetLayer()
-        ftr = layer.GetNextFeature()
-        geom = ftr.geometry()
-        is_two_d = geom.CoordinateDimension() == 2
-        spatialRef = layer.GetSpatialRef()
-        epsg = spatialRef.GetAuthorityCode(None)
+    # with ogr.Open(fh) as ds: # NOTE does not work in gdal < 3.7, so not using 
+    # for backward compatability with Colab.
+    ds = ogr.Open(fh)
+
+    driver = ds.GetDriver()
+    layer = ds.GetLayer()
+    ftr = layer.GetNextFeature()
+    geom = ftr.geometry()
+    is_two_d = geom.CoordinateDimension() == 2
+    spatialRef = layer.GetSpatialRef()
+    epsg = spatialRef.GetAuthorityCode(None)
+
+    ds = ds.Close()
     return int(epsg), getattr(driver, "name", None), is_two_d
 
 def guess_l3_region(region_shape: shapely.Polygon) -> str:
