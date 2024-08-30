@@ -15,7 +15,7 @@ improve performance when converting units.
 ### Pip (make sure GDAL is already installed in your environment)
 To install with `xarray` and `rioxarray` do:
 
-`pip install 'wapordl[full]'`
+`pip install wapordl xarray rioxarray`
 
 Otherwise, the following suffices:
 
