@@ -92,6 +92,69 @@ AGERA5_VARS = {
     "AGERA5-PF-A":      {"long_name": "Precipitation", "units": "mm/year", "source": "agERA5"},
 }
 
+WAPOR3_VARS = {
+    'L1-AETI-A':        {'long_name': 'Actual EvapoTranspiration and Interception', 'units': 'mm/year'},
+    'L1-AETI-D':        {'long_name': 'Actual EvapoTranspiration and Interception', 'units': 'mm/day'},
+    'L1-AETI-M':        {'long_name': 'Actual EvapoTranspiration and Interception', 'units': 'mm/month'},
+    'L1-E-A':           {'long_name': 'Evaporation', 'units': 'mm/year'},
+    'L1-E-D':           {'long_name': 'Evaporation', 'units': 'mm/day'},
+    'L1-GBWP-A':        {'long_name': 'Gross Biomass Water Productivity', 'units': 'kg/m³'},
+    'L1-I-A':           {'long_name': 'Interception', 'units': 'mm/year'},
+    'L1-I-D':           {'long_name': 'Interception', 'units': 'mm/day'},
+    'L1-NBWP-A':        {'long_name': 'Net Biomass Water Productivity', 'units': 'kg/m³'},
+    'L1-NPP-D':         {'long_name': 'Net Primary Production', 'units': 'gC/m²/day'},
+    'L1-NPP-M':         {'long_name': 'Net Primary Production', 'units': 'gC/m²/month'},
+    'L1-PCP-A':         {'long_name': 'Precipitation', 'units': 'mm/year'},
+    'L1-PCP-D':         {'long_name': 'Precipitation', 'units': 'mm/day'},
+    'L1-PCP-E':         {'long_name': 'Precipitation', 'units': 'mm/day'},
+    'L1-PCP-M':         {'long_name': 'Precipitation', 'units': 'mm/month'},
+    'L1-QUAL-LST-D':    {'long_name': 'Quality Land Surface Temperature', 'units': 'd'},
+    'L1-QUAL-NDVI-D':   {'long_name': 'Quality of Normalized Difference Vegetation Index', 'units': 'd'},
+    'L1-RET-A':         {'long_name': 'Reference Evapotranspiration', 'units': 'mm/year'},
+    'L1-RET-D':         {'long_name': 'Reference Evapotranspiration', 'units': 'mm/day'},
+    'L1-RET-E':         {'long_name': 'Reference Evapotranspiration', 'units': 'mm/day'},
+    'L1-RET-M':         {'long_name': 'Reference Evapotranspiration', 'units': 'mm/month'},
+    'L1-RSM-D':         {'long_name': 'Relative Soil Moisture', 'units': '%'},
+    'L1-T-A':           {'long_name': 'Transpiration', 'units': 'mm/year'},
+    'L1-T-D':           {'long_name': 'Transpiration', 'units': 'mm/day'},
+    'L1-TBP-A':         {'long_name': 'Total Biomass Production', 'units': 'kg/ha'},
+    
+    'L2-AETI-A':        {'long_name': 'Actual EvapoTranspiration and Interception', 'units': 'mm/year'},
+    'L2-AETI-D':        {'long_name': 'Actual EvapoTranspiration and Interception', 'units': 'mm/day'},
+    'L2-AETI-M':        {'long_name': 'Actual EvapoTranspiration and Interception', 'units': 'mm/month'},
+    'L2-E-A':           {'long_name': 'Evaporation', 'units': 'mm/year'},
+    'L2-E-D':           {'long_name': 'Evaporation', 'units': 'mm/day'},
+    'L2-GBWP-A':        {'long_name': 'Gross Biomass Water Productivity', 'units': 'kg/m³'},
+    'L2-I-A':           {'long_name': 'Interception', 'units': 'mm/year'},
+    'L2-I-D':           {'long_name': 'Interception', 'units': 'mm/day'},
+    'L2-NBWP-A':        {'long_name': 'Net Biomass Water Productivity', 'units': 'kg/m³'},
+    'L2-NPP-D':         {'long_name': 'Net Primary Production', 'units': 'gC/m²/day'},
+    'L2-NPP-M':         {'long_name': 'Net Primary Production', 'units': 'gC/m²/month'},
+    'L2-QUAL-NDVI-D':   {'long_name': 'Quality of Normalized Difference Vegetation Index', 'units': 'd'},
+    'L2-RSM-D':         {'long_name': 'Relative Soil Moisture', 'units': '%'},
+    'L2-T-A':           {'long_name': 'Transpiration', 'units': 'mm/year'},
+    'L2-T-D':           {'long_name': 'Transpiration', 'units': 'mm/day'},
+    'L2-TBP-A':         {'long_name': 'Total Biomass Production', 'units': 'kg/ha'},
+
+    'L3-AETI-A':        {'long_name': 'Actual EvapoTranspiration and Interception', 'units': 'mm/year'},
+    'L3-AETI-D':        {'long_name': 'Actual EvapoTranspiration and Interception', 'units': 'mm/day'},
+    'L3-AETI-M':        {'long_name': 'Actual EvapoTranspiration and Interception', 'units': 'mm/month'},
+    'L3-E-A':           {'long_name': 'Evaporation', 'units': 'mm/year'},
+    'L3-E-D':           {'long_name': 'Evaporation', 'units': 'mm/day'},
+    'L3-GBWP-A':        {'long_name': 'Gross Biomass Water Productivity', 'units': 'kg/m³'},
+    'L3-I-A':           {'long_name': 'Interception', 'units': 'mm/year'},
+    'L3-I-D':           {'long_name': 'Interception', 'units': 'mm/day'},
+    'L3-NBWP-A':        {'long_name': 'Net Biomass Water Productivity', 'units': ' kg/m³'},
+    'L3-NPP-D':         {'long_name': 'Net Primary Production', 'units': 'gC/m²/day'},
+    'L3-NPP-M':         {'long_name': 'Net Primary Production', 'units': 'gC/m²/month'},
+    'L3-QUAL-NDVI-D':   {'long_name': 'Quality of Normalized Difference Vegetation Index', 'units': 'd'},
+    'L3-RSM-D':         {'long_name': 'Relative Soil Moisture', 'units': '%'},
+    'L3-T-A':           {'long_name': 'Transpiration', 'units': 'mm/year'},
+    'L3-T-D':           {'long_name': 'Transpiration', 'units': 'mm/day'},
+    'L3-TBP-A':         {'long_name': 'Total Biomass Production', 'units': 'kg/ha'}
+ }
+
+
 def reproject_vector(fh: str, epsg = 4326) -> str:
     """Create a 2D GeoJSON file with `EPSG:4326` SRS from any
     OGR compatible vector file.
@@ -326,6 +389,9 @@ def collect_metadata(variable: str) -> dict:
     if variable in AGERA5_VARS.keys():
         return AGERA5_VARS[variable]
     
+    if variable in WAPOR3_VARS.keys():
+        return WAPOR3_VARS[variable]
+    
     if "L1" in variable:
         base_url = f"https://data.apps.fao.org/gismgr/api/v2/catalog/workspaces/WAPOR-3/mapsets"
     elif "L2" in variable:
@@ -336,6 +402,7 @@ def collect_metadata(variable: str) -> dict:
         raise ValueError(f"Invalid variable name {variable}.") # NOTE: TESTED
     info = ["code", "measureCaption", "measureUnit"]
     var_codes = {x[0]: {"long_name": x[1], "units": x[2]} for x in collect_responses(base_url, info = info)}
+    
     return var_codes[variable]
 
 def make_dekad_dates(period: list, max_date = None) -> list:
