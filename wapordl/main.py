@@ -823,7 +823,8 @@ def wapor_dl(region: Union[str, List[float], None], variable: str,
              overview = "NONE",
              unit_conversion = "none", 
              req_stats = ["minimum", "maximum", "mean"],
-             folder = None) -> Union[str, pd.DataFrame]:
+             folder = None,
+             filename = None) -> Union[str, pd.DataFrame]:
     """Download a WaPOR or agERA5 variable for a specified region and period.
 
     Parameters
@@ -846,6 +847,8 @@ def wapor_dl(region: Union[str, List[float], None], variable: str,
     folder : str, optional
         Path to a folder in which to save any (intermediate) files. If set to `None`, everything will be
         kept in memory, by default None.
+    filename : str, optional
+        Set a different name for the output file.
 
     Returns
     -------
@@ -991,7 +994,10 @@ def wapor_dl(region: Union[str, List[float], None], variable: str,
     if folder:
         if not os.path.isdir(folder):
             os.makedirs(folder)
-        warp_fn = os.path.join(folder, f"{region_code}_{variable}_{overview}_{unit_conversion}.tif")
+        if isinstance(filename, type(None)):
+            warp_fn = os.path.join(folder, f"{filename}.tif")
+        else:
+            warp_fn = os.path.join(folder, f"{region_code}_{variable}_{overview}_{unit_conversion}.tif")
     else:
         warp_fn = f"/vsimem/{pd.Timestamp.now()}_{region_code}_{variable}_{overview}_{unit_conversion}.tif"
 
@@ -1021,7 +1027,8 @@ def wapor_dl(region: Union[str, List[float], None], variable: str,
 def wapor_map(region: Union[str, List[float], None], variable: str, period: list, folder: str, 
               unit_conversion = "none",
               overview = "NONE", extension = ".tif", 
-              separate_unscale = False) -> str:
+              separate_unscale = False,
+              filename = None) -> str:
     """Download a map of a WaPOR3 or agERA5 variable for a specified region and period.
 
     Parameters
@@ -1045,6 +1052,8 @@ def wapor_map(region: Union[str, List[float], None], variable: str, period: list
     separate_unscale : bool, optional
         Set to `True` to create single band geotif files instead of a single geotif with multiple bands, 
         does not do anything when extension is set to ".nc" , by default False.
+    filename : str, optional
+        Set a different name for the output file.
 
     Returns
     -------
@@ -1071,6 +1080,7 @@ def wapor_map(region: Union[str, List[float], None], variable: str, period: list
                   overview = overview,
                   unit_conversion = unit_conversion,
                   req_stats = None,
+                  filename = filename,
                   )
 
     if extension == ".tif" and separate_unscale:
