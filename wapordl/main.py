@@ -1061,7 +1061,7 @@ def wapor_dl(region: Union[str, List[float], None], variable: str,
     if folder:
         if not os.path.isdir(folder):
             os.makedirs(folder)
-        if isinstance(filename, type(None)):
+        if not isinstance(filename, type(None)):
             warp_fn = os.path.join(folder, f"{filename}.tif")
         else:
             warp_fn = os.path.join(folder, f"{region_code}_{variable}_{overview}_{unit_conversion}.tif")
