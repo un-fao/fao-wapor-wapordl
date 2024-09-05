@@ -250,6 +250,10 @@ fpXX = wapor_map(region_bekaa, "L1-T-D", period, folder)
 region_GEZ = [str(x) for x in l3_regions if "GEZ" in str(x)][0]
 fp16 = wapor_map(region_GEZ, "L3-T-D", period, folder)
 
+GEZ = wapordl.main.L3_BBS.pop("GEZ")
+fp16b = wapor_map(region_GEZ, "L3-E-D", period, folder)
+assert wapordl.main.L3_BBS.get("GEZ", None) == GEZ
+
 region_MUV = [str(x) for x in l3_regions if "MUV" in str(x)][0]
 fp17 = wapor_map(region_MUV, "L3-T-D", period, folder)
 
