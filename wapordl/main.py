@@ -50,6 +50,11 @@ L3_BBS = {
     'LAK': [[30.5461141, -1.8405081], [30.5456327, -2.1639182], [30.8439607, -2.1643744], [30.8443837, -1.8408961], [30.5461141, -1.8405081]],
     'LOT': [[13.5784136, 32.4380383], [13.5814622, 32.2428769], [13.7011675, 32.2441643], [13.698376, 32.4393353], [13.5784136, 32.4380383]],
     'MBL': [[32.8061235, -24.386931], [32.8049677, -25.1294871], [33.7920054, -25.1274992], [33.7873122, -24.3850094], [32.8061235, -24.386931]],
+    "LOU": [[-6.4053458, 35.171092], [-6.4252994, 34.5334733], [-5.8500406, 34.5199809], [-5.8256453, 35.1572776], [-6.4053458, 35.171092]],
+    "MAG": [[-74.3559676, 10.9913645], [-74.3570039, 10.5021068], [-74.0870681, 10.5014456], [-74.085597, 10.9906718], [-74.3559676, 10.9913645]],
+    "ZAN": [[31.1915198, 30.745008], [31.1990478, 30.338054], [31.6327291, 30.3433089], [31.6270123, 30.7503484], [31.1915198, 30.745008]],
+    "KWL": [[71.5317843, 30.744271], [71.5101854, 29.9013311], [72.4782613, 29.8793418], [72.5081543, 30.7215307], [71.5317843, 30.744271]],
+    "SNG": [[68.4325764, 26.4681951], [68.4372509, 25.4903063], [69.6481126, 25.4899539], [69.653496, 26.4678272], [68.4325764, 26.4681951]],
     }
 
 L2_BB = """
@@ -245,7 +250,12 @@ def guess_l3_region(region_shape: shapely.Polygon) -> str:
     checks = {x: shapely.Polygon(np.array(bb)).intersects(region_shape) for x, bb in L3_BBS.items()}
     number_of_results = sum(checks.values())
     if number_of_results == 0:
-        raise ValueError(f"`region` can't be linked to any L3 region.") # NOTE: TESTED
+        added_regions = update_L3_BBS()
+        l3_bbs = {x: L3_BBS[x] for x in added_regions}
+        checks = {x: shapely.Polygon(np.array(bb)).intersects(region_shape) for x, bb in l3_bbs.items()}
+        number_of_results = sum(checks.values())
+        if number_of_results == 0:
+            raise ValueError(f"`region` can't be linked to any L3 region.") # NOTE: TESTED
     
     l3_regions = [k for k, v in checks.items() if v]
     l3_region = l3_regions[0]
@@ -1277,7 +1287,7 @@ def l3_bounding_boxes(variable = "L3-T-A", l3_region = None) -> dict:
     dict
         keys are three letter region codes, values are the coordinates of the bounding-boxes.
     """
-    urls = generate_urls_v3(variable, l3_region = l3_region, period = ["2019-01-01", "2019-02-01"])
+    urls = generate_urls_v3(variable, l3_region = l3_region, period = ["2020-01-01", "2021-02-01"])
     l3_bbs = {}
     for region_code, url in zip([os.path.split(x)[-1].split(".")[-3] for x in urls], urls):
         info = gdal.Info("/vsicurl/" + url, format = "json")
@@ -1285,15 +1295,31 @@ def l3_bounding_boxes(variable = "L3-T-A", l3_region = None) -> dict:
         l3_bbs[region_code] = bb
     return l3_bbs
 
+def update_L3_BBS():
+    logging.info("Updating L3 bounding-boxes.")
+    all_l3_regions = l3_codes()
+    new_regions = set(all_l3_regions.keys()).difference(set(L3_BBS.keys()))
+    added_regions = list()
+    for l3_region in new_regions:
+        new_bb = l3_bounding_boxes(l3_region=l3_region).get(l3_region, None)
+        if not isinstance(new_bb, type(None)):
+            added_regions.append(l3_region)
+            L3_BBS[l3_region] = new_bb
+    return added_regions
+
 if __name__ == "__main__":
 
-    variable = "L1-RET-D"
+    variable = "L3-T-A"
     folder = r"/Users/hmcoerver/Local/testX"
     period = ["2021-01-01", "2021-01-31"]
     overview = "NONE"
     # region = '/Users/hmcoerver/Library/Mobile Documents/com~apple~CloudDocs/GitHub/wapordl/wapordl/test_data/1237500.geojson'
-    region1 = [9.2153, 12.1095, 9.8517, 12.6154] # 3x3 pixels
-    region2= [9.4231, 12.2881,9.6619, 12.4505] # 1x1 pixels
+    # region1 = [9.2153, 12.1095, 9.8517, 12.6154] # 3x3 pixels
+    # region2= [9.4231, 12.2881,9.6619, 12.4505] # 1x1 pixels
+
+    # x = l3_codes()
+    # region1 = "/Users/hmcoerver/Desktop/IrrigationScheme.geojson"
+    region1 = "KWL"
     
-    # x1 = wapor_map(region1, variable, period, os.path.join(folder, "3x3"), overview = overview)
+    x1 = wapor_map(region1, variable, period, folder)
     # x2 = wapor_map(region2, variable, period, os.path.join(folder, "1x1"), overview = overview)
