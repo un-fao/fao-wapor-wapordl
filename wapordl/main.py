@@ -10,15 +10,20 @@ from osgeo_utils import gdal_calc
 from typing import Union, List
 from string import ascii_lowercase, ascii_uppercase
 gdal.UseExceptions()
-logging.basicConfig(encoding='utf-8', level=logging.INFO, format='%(levelname)s: %(message)s')
+logging.basicConfig(
+                    encoding='utf-8', 
+                    level=logging.INFO, 
+                    format='%(levelname)s: %(message)s',
+                    force = True
+                    )
 
 try:
     import xarray as xr
     import rioxarray
+    import dask
     use_xarray = True
-    # raise ImportError
 except ImportError:
-    logging.info("Consider installing `xarray` and `rioxarray` for faster unit conversions.")
+    logging.info("Consider installing `xarray`, `rioxarray` and `dask` for faster unit conversions.")
     use_xarray = False
 
 L3_BBS = {
@@ -323,40 +328,21 @@ def date_func(url: str, tres: str) -> dict:
         No valid `tres` given.
     """
     if tres == "D":
-        if "AGERA5" in url:
-            year_acc_dekad = os.path.split(url)[-1].split("_")[-1].split(".")[0]
-            year = year_acc_dekad[:4]
-            acc_dekad = int(year_acc_dekad[-2:])
-            month = str((acc_dekad - 1) // 3 + 1).zfill(2)
-            dekad = str((acc_dekad - 1) % 3 + 1)
-        else:
-            year, month, dekad = os.path.split(url)[-1].split(".")[-2].split("-")
+        year, month, dekad = os.path.split(url)[-1].split(".")[-2].split("-")
         start_day = {'D1': '01', 'D2': '11', 'D3': '21', '1': '01', '2': '11', '3': '21'}[dekad]
         start_date = f"{year}-{month}-{start_day}"
         end_day = {'D1': '10', 'D2': '20', 'D3': pd.Timestamp(start_date).daysinmonth, '1': '10', '2': '20', '3': pd.Timestamp(start_date).daysinmonth}[dekad]
         end_date = f"{year}-{month}-{end_day}"
     elif tres == "M":
-        if "AGERA5" in url:
-            year = os.path.split(url)[-1].split("_")[-1][:4]
-            month = os.path.split(url)[-1].split("_")[-1][5:7]
-        else:
-            year, month = os.path.split(url)[-1].split(".")[-2].split("-")
+        year, month = os.path.split(url)[-1].split(".")[-2].split("-")
         start_date = f"{year}-{month}-01"
         end_date = f"{year}-{month}-{pd.Timestamp(start_date).days_in_month}"
     elif tres == "A":
-        if "AGERA5" in url:
-            year = os.path.split(url)[-1].split("_")[-1][:4]
-        else:
-            year = os.path.split(url)[-1].split(".")[-2]
+        year = os.path.split(url)[-1].split(".")[-2]
         start_date = f"{year}-01-01"
         end_date = f"{year}-12-31"
     elif tres == "E":
-        if "AGERA5" in url:
-            year = os.path.split(url)[-1].split("_")[-1][:4]
-            month = os.path.split(url)[-1].split("_")[-1][4:6]
-            start_day = os.path.split(url)[-1].split("_")[-1][6:8]
-        else:
-            year, month, start_day = os.path.split(url)[-1].split(".")[-2].split("-")
+        year, month, start_day = os.path.split(url)[-1].split(".")[-2].split("-")
         start_date = end_date = f"{year}-{month}-{start_day}"
     else:
         raise ValueError("Invalid temporal resolution.") # NOTE: TESTED
@@ -538,7 +524,7 @@ def generate_urls_agERA5(variable: str, period = None, check_urls = True) -> tup
 
     Notes
     -----
-    https://data.apps.fao.org/static/data/index.html?prefix=static%2Fdata%2Fc3s%2FAGERA5_ET0
+    https://data.apps.fao.org/static/data/index.html?prefix=static%2Fdata%2Fc3s%2FMAPSET%2FAGERA5-ET0-D
     """
     level, var_code, tres = variable.split("-")
 
@@ -548,30 +534,29 @@ def generate_urls_agERA5(variable: str, period = None, check_urls = True) -> tup
     max_date = pd.Timestamp.now() - pd.Timedelta(days = 25)
     if isinstance(period, type(None)):
         period = ["1979-01-01", max_date.strftime("%Y-%m-%d")]
-
-    base_url = f"https://data.apps.fao.org/static/data/c3s/{level}_{var_code}_{tres}"
+              
+    base_url = f"https://data.apps.fao.org/static/data/c3s/MAPSET"
     urls = list()
     if tres == "E":
-        base_url = base_url[:-2]
         x_filtered = make_daily_dates(period, max_date = max_date)
         for x in x_filtered:
-            url = os.path.join(base_url, f"{level}_{var_code}_{x.strftime('%Y%m%d')}.tif")
+            url = os.path.join(base_url, f"{level}-{var_code}",f"C3S.{level}-{var_code}.{x.strftime('%Y-%m-%d')}.tif")
             urls.append(url)
     elif tres == "D":
         x_filtered = make_dekad_dates(period, max_date=max_date)
         for x in x_filtered:
-            acc_dekad = (x.month - 1)*3 + {1: 1, 11: 2, 21: 3}[x.day]
-            url = os.path.join(base_url, f"{level}_{var_code}_{x.year}D{acc_dekad:>02}.tif")
+            dekad = {1: 1, 11: 2, 21: 3}[x.day]
+            url = os.path.join(base_url, variable, f"C3S.{variable}.{x.year}-{x.month:>02}-D{dekad}.tif")
             urls.append(url)
     elif tres == "M":
         x_filtered = make_monthly_dates(period, max_date = max_date)
         for x in x_filtered:
-            url = os.path.join(base_url, f"{level}_{var_code}_{x.year}M{x.month:>02}.tif")
+            url = os.path.join(base_url, variable, f"C3S.{variable}.{x.year}-{x.month:>02}.tif")
             urls.append(url)
     elif tres == "A":
         x_filtered = make_annual_dates(period, max_date = max_date)
         for x in x_filtered:
-            url = os.path.join(base_url, f"{level}_{var_code}_{x.year}.tif")
+            url = os.path.join(base_url, variable, f"C3S.{variable}.{x.year}.tif")
             urls.append(url)
     else:
         raise ValueError(f"Invalid temporal resolution `{tres}`.")
@@ -749,12 +734,19 @@ def unit_convertor(urls: list, in_fn: str, out_fn: str, unit_conversion: str, wa
         
         ndv = warp.GetRasterBand(1).GetNoDataValue()
         if use_xarray:
-            ds = xr.open_dataset(in_fn, mask_and_scale=False, decode_coords="all")
+            if not "/vsi" in in_fn:
+                chunks = {"band": 1, "x": "auto", "y": "auto"}
+            else: chunks = None
+            ds = xr.open_dataset(
+                                in_fn, 
+                                 mask_and_scale=False, 
+                                 decode_coords="all",
+                                 chunks = chunks,
+                                 )
             xr_conv = xr.DataArray(conversion_factors, coords = {"band": ds["band"]})
             ndv_ = ds["band_data"].attrs["_FillValue"]
 
-            da = xr.where(ds["band_data"] == ndv_, ndv_, ds["band_data"] * xr_conv)
-            da = np.round(da, 0)
+            da = xr.where(ds["band_data"] == ndv_, ndv_, ds["band_data"] * xr_conv).round(decimals=0)
 
             ds_out = da.to_dataset("band")
             for i, (scale, (md, _)) in enumerate(zip(scales, urls)):
@@ -763,7 +755,13 @@ def unit_convertor(urls: list, in_fn: str, out_fn: str, unit_conversion: str, wa
                 ds_out[i+1].attrs["scale_factor"] = scale
 
             ds_out = ds_out.rio.write_crs(ds.rio.crs)
-            ds_out.rio.to_raster(out_fn, compress = "LZW", dtype = {5: "int32", 7: "float64"}[dtype])
+            ds_out.rio.to_raster(
+                out_fn, 
+                compress = "LZW", 
+                dtype = {5: "int32", 7: "float64"}[dtype],
+                windowed=True,
+                lock = True,
+                )
             filen = out_fn
         else:
             warp = gdal_calc.Calc(
@@ -1308,18 +1306,18 @@ def update_L3_BBS():
     return added_regions
 
 if __name__ == "__main__":
+    ...
+    # variable = "L3-T-A"
+    # folder = r"/Users/hmcoerver/Local/testX"
+    # period = ["2021-01-01", "2021-01-31"]
+    # overview = "NONE"
+    # # region = '/Users/hmcoerver/Library/Mobile Documents/com~apple~CloudDocs/GitHub/wapordl/wapordl/test_data/1237500.geojson'
+    # # region1 = [9.2153, 12.1095, 9.8517, 12.6154] # 3x3 pixels
+    # # region2= [9.4231, 12.2881,9.6619, 12.4505] # 1x1 pixels
 
-    variable = "L3-T-A"
-    folder = r"/Users/hmcoerver/Local/testX"
-    period = ["2021-01-01", "2021-01-31"]
-    overview = "NONE"
-    # region = '/Users/hmcoerver/Library/Mobile Documents/com~apple~CloudDocs/GitHub/wapordl/wapordl/test_data/1237500.geojson'
-    # region1 = [9.2153, 12.1095, 9.8517, 12.6154] # 3x3 pixels
-    # region2= [9.4231, 12.2881,9.6619, 12.4505] # 1x1 pixels
-
-    # x = l3_codes()
-    # region1 = "/Users/hmcoerver/Desktop/IrrigationScheme.geojson"
-    region1 = "KWL"
+    # # x = l3_codes()
+    # # region1 = "/Users/hmcoerver/Desktop/IrrigationScheme.geojson"
+    # region1 = "KWL"
     
-    x1 = wapor_map(region1, variable, period, folder)
+    # x1 = wapor_map(region1, variable, period, folder)
     # x2 = wapor_map(region2, variable, period, os.path.join(folder, "1x1"), overview = overview)
