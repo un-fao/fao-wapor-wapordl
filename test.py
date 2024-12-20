@@ -41,11 +41,17 @@ wapordl.main.use_xarray = True
 dff_2 = wapor_ts(region, "L2-AETI-M", period, unit_conversion = "day", overview = 3)
 assert dff_1.equals(dff_2)
 
+# BIG DATA, this crashes without Dask.
+x = wapor_map("ENO", "L3-T-D", ["2021-12-01", "2021-12-31"], os.path.join(folder, "big_xarray"), unit_conversion = "dekad")
+
 wapordl.main.use_xarray = True
 #####
 # AGERA5 CHECKS
 #####
-period_agera5 = [(pd.Timestamp.now() - pd.Timedelta(days = 40)).strftime("%Y-%m-%d"), pd.Timestamp.now().strftime("%Y-%m-%d")]
+period_agera5 = [
+                (pd.Timestamp.now() - pd.Timedelta(days = 80)).strftime("%Y-%m-%d"), 
+                 (pd.Timestamp.now() - pd.Timedelta(days = 40)).strftime("%Y-%m-%d")
+                 ]
 fp21 = wapor_map(region, "AGERA5-ET0-D", period_agera5, folder, extension= ".nc", unit_conversion="dekad")
 fp22 = wapor_map(region, "AGERA5-ET0-D", period_agera5, folder, extension= ".nc", unit_conversion="day")
 fp23 = wapor_map(region, "AGERA5-ET0-E", period_agera5, folder, extension= ".nc", unit_conversion="dekad")
