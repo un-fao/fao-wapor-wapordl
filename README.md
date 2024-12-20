@@ -7,15 +7,14 @@ Download data from the WaPOR3 dataset as spatially aggregated timeseries or as s
 ## Installation
 
 ### Conda (recommended)
-`xarray` and `rioxarray` are optional dependencies, but greatly 
-improve performance when converting units.
+Install using conda by doing:
 
-`conda install -c conda-forge wapordl xarray rioxarray`
+`conda install -c conda-forge wapordl`
 
 ### Pip (make sure GDAL is already installed in your environment)
-To install with `xarray` and `rioxarray` do:
+To install with support for faster unit conversion do:
 
-`pip install wapordl xarray rioxarray`
+`pip install "wapordl[full]"`
 
 Otherwise, the following suffices:
 
