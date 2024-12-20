@@ -14,7 +14,7 @@ setup(
         "shapely>=2.0.0",
         "tqdm",
     ],
-    extra_requires={
+    extras_require={
         "full": [
             "xarray",
             "rioxarray",
