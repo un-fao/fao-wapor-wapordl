@@ -1,81 +1,20 @@
 import glob
-import os
 import logging
-import shapely.plotting
-# import wapordl.main
+import os
 
 import matplotlib.pyplot as plt
 import numpy as np
-from osgeo import gdal, ogr
+import shapely.plotting
+from osgeo import gdal
+
+import wapordl.toolbox as toolbox
 
 gdal.UseExceptions()
 
 
-def reproject_vector(fh: str, epsg=4326, in_memory=True) -> str:
-    """Create a 2D GeoJSON file with `EPSG:4326` SRS from any
-    OGR compatible vector file.
-
-    Parameters
-    ----------
-    fh : str
-        Path to input file.
-    epsg : int, optional
-        target SRS, by default 4326.
-
-    Returns
-    -------
-    str
-        Path to output (GeoJSON) file.
-    """
-
-    ext = os.path.splitext(fh)[-1]
-    out_fh = fh.replace(ext, f"_reprojected{epsg}.geojson")
-
-    if "/vsimem/" not in out_fh and in_memory:
-        out_fh = "/vsimem/" + out_fh
-
-    options = gdal.VectorTranslateOptions(
-        dstSRS=f"EPSG:{epsg}",
-        format="GeoJSON",
-        dim="XY",
-    )
-    x = gdal.VectorTranslate(out_fh, fh, options=options)
-    x.FlushCache()
-    x = None
-
-    return out_fh
-
-def bb_to_vsimem(bb) -> str:
-
-    bb_ = [str(x) for x in bb]
-    coords = [
-        (bb_[0], bb_[1]),
-        (bb_[2], bb_[1]),
-        (bb_[2], bb_[3]),
-        (bb_[0], bb_[3]),
-        (bb_[0], bb_[1]),
-    ]
-    merged_coords = ", ".join([" ".join(x) for x in coords])
-    wkt = f'POLYGON (({merged_coords}))'
-
-    geom = ogr.CreateGeometryFromWkt(wkt)
-    outDriver = ogr.GetDriverByName('GeoJSON')
-    fh = "/vsimem/test.geojson"
-    outDataSource = outDriver.CreateDataSource(fh)
-    outLayer = outDataSource.CreateLayer('temp', geom_type=ogr.wkbPolygon)
-    featureDefn = outLayer.GetLayerDefn()
-    outFeature = ogr.Feature(featureDefn)
-    outFeature.SetGeometry(geom)
-    outLayer.CreateFeature(outFeature)
-    outFeature = None
-    outDataSource = None
-
-    return fh
-
 def geot_area(shape_fh: str, geot: list, zero_is_nan=True, make_plots=False) -> float:
-    
     # Get the bounding-box of the shape
-    bounds = get_bounds(shape_fh)
+    bounds = toolbox.get_bounds(shape_fh)
     coords = np.array(bounds).reshape((2, 2))
 
     # List which pixels intersect with the bb.
@@ -141,7 +80,7 @@ def geot_area(shape_fh: str, geot: list, zero_is_nan=True, make_plots=False) -> 
             zorder=0,
         )
 
-        shape = get_shapely(shape_fh)
+        shape = toolbox.get_shapely(shape_fh)
         _ = shapely.plotting.plot_polygon(
             shapely.unary_union(shape),
             ax=ax,
@@ -171,47 +110,26 @@ def geot_area(shape_fh: str, geot: list, zero_is_nan=True, make_plots=False) -> 
         ax.tick_params(which="minor", bottom=False, left=False)
 
         if os.path.isdir(make_plots):
-            plot_fh = os.path.join(make_plots, f"{area}_{os.path.split(shape_fh)[-1].replace('.geojson', '')}.png")
+            plot_fh = os.path.join(
+                make_plots,
+                f"{area}_{os.path.split(shape_fh)[-1].replace('.geojson', '')}.png",
+            )
             fig.savefig(plot_fh)
 
     return area
 
 
-def get_area(fh, lyr_idx = 0, ftr_idx = 0):
-    ds = gdal.OpenEx(fh, gdal.OF_VECTOR)
-    layer = ds.GetLayerByIndex(lyr_idx)
-    ftr = list(layer)[ftr_idx]
-    geom = ftr.GetGeometryRef()
-    area = geom.GetArea()
-    return area
-
-def get_bounds(fh, lyr_idx = 0, ftr_idx = 0):
-    ds = gdal.OpenEx(fh, gdal.OF_VECTOR)
-    layer = ds.GetLayerByIndex(lyr_idx)
-    ftr = list(layer)[ftr_idx]
-    geom = ftr.GetGeometryRef()
-    bounds = geom.GetEnvelope()
-    return [bounds[0], bounds[2], bounds[1], bounds[3]]
-
-def get_shapely(fh, lyr_idx = 0, ftr_idx = 0):
-    ds = gdal.OpenEx(fh, gdal.OF_VECTOR)
-    layer = ds.GetLayerByIndex(lyr_idx)
-    ftr = list(layer)[ftr_idx]
-    geom = ftr.GetGeometryRef()
-    return shapely.from_wkt(geom.ExportToWkt())
-
 def determine_overview(info_fh, shape_fh, max_error=0.5, make_plots=False):
-    
     # Load raster information.
     info = gdal.Info(info_fh, format="json")
     epsg = int(info["coordinateSystem"]["wkt"].split('ID["EPSG",')[-1][:-2])
-    
-    if isinstance(shape_fh, list):
-        shape_fh = bb_to_vsimem(shape_fh)
-    if epsg != 4326:
-        shape_fh = reproject_vector(shape_fh, epsg=epsg)
 
-    shape_area = get_area(shape_fh)
+    if isinstance(shape_fh, list):
+        shape_fh = toolbox.bb_to_vsimem(shape_fh)
+    if epsg != 4326:
+        shape_fh = toolbox.reproject_vector(shape_fh, epsg=epsg, in_memory=True)
+
+    shape_area = toolbox.get_area(shape_fh)
 
     # Determine the scales to convert the original geot.
     res = np.array(info["size"])
@@ -248,7 +166,7 @@ def determine_overview(info_fh, shape_fh, max_error=0.5, make_plots=False):
     # Select the overview with the smallest error.
     if all(np.isnan(errors)):
         overview = -1
-    else: 
+    else:
         overview = overviews[np.nanargmin(errors)]
 
     # Create a plot if necessary.
@@ -285,7 +203,10 @@ def determine_overview(info_fh, shape_fh, max_error=0.5, make_plots=False):
         fig.legend()
 
         if os.path.isdir(make_plots):
-            plot_fh = os.path.join(make_plots, f"{overview}_{os.path.split(shape_fh)[-1].replace('.geojson', '')}.png")
+            plot_fh = os.path.join(
+                make_plots,
+                f"{overview}_{os.path.split(shape_fh)[-1].replace('.geojson', '')}.png",
+            )
             fig.savefig(plot_fh)
 
     return overview
@@ -300,18 +221,19 @@ if __name__ == "__main__":
     lyr_idx = 0
     ftr_idx = 0
 
-    shape_fhs = glob.glob(r"/Users/hmcoerver/Library/Mobile Documents/com~apple~CloudDocs/GitHub/wapordl/wapordl/test_data/detector_shapes/*.geojson")
+    shape_fhs = glob.glob(
+        r"/Users/hmcoerver/Library/Mobile Documents/com~apple~CloudDocs/GitHub/wapordl/wapordl/test_data/detector_shapes/*.geojson"
+    )
     i = 2
     shape_fh = shape_fhs[i]
     # shape_fh = "/Users/hmcoerver/Library/Mobile Documents/com~apple~CloudDocs/GitHub/wapordl/wapordl/test_data/test_MUV.geojson"
     shape_fh = "/Users/hmcoerver/Library/Mobile Documents/com~apple~CloudDocs/GitHub/wapordl/wapordl/test_data/detector_shapes/star.geojson"
-    bb = get_bounds(shape_fh)
-
+    bb = toolbox.get_bounds(shape_fh)
 
     # info_fh = "/vsicurl/https://storage.googleapis.com/fao-gismgr-wapor-3-data/DATA/WAPOR-3/MOSAICSET/L3-AETI-D/WAPOR-3.L3-AETI-D.MUV.2021-01-D1.tif"
     info_fh = "/vsicurl/https://storage.googleapis.com/fao-gismgr-wapor-3-data/DATA/WAPOR-3/MAPSET/L1-T-D/WAPOR-3.L1-T-D.2021-01-D1.tif"
 
-    overview = determine_overview(info_fh, shape_fh, make_plots=True, max_error = 0.5)
+    overview = determine_overview(info_fh, shape_fh, make_plots=True, max_error=0.5)
 
     # print(shape_fh, overview)
 
