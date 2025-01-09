@@ -13,4 +13,4 @@ from wapordl.overview_selector import (
     determine_overview,
     geot_area
 )
-__version__ = '0.12.5'
+__version__ = '0.13.0'
