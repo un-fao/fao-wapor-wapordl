@@ -1,3 +1,4 @@
+import importlib.util
 import logging
 import os
 from string import ascii_lowercase, ascii_uppercase
@@ -7,9 +8,9 @@ import numpy as np
 import pandas as pd
 import requests
 import shapely
-import importlib.util
 from osgeo import gdal, gdalconst, ogr
 from osgeo_utils import gdal_calc
+from wapordl.overview_selector import determine_overview
 from tqdm import tqdm
 
 gdal.UseExceptions()
@@ -1257,6 +1258,7 @@ def cog_dl(
         targetAlignedPixels=True,
         creationOptions=valid_cos[out_ext],
         callback=_callback_func,
+        # warpOptions=['CUTLINE_ALL_TOUCHED','TRUE'],
         **warp_kwargs,
     )
     warp = gdal.Warp(out_fn, vrt_fn, options=warp_options)
@@ -1305,6 +1307,8 @@ def wapor_dl(
     req_stats=["minimum", "maximum", "mean"],
     folder=None,
     filename=None,
+    max_error=0.5,
+    make_plots=False
 ) -> Union[str, pd.DataFrame]:
     """Download a WaPOR or agERA5 variable for a specified region and period.
 
@@ -1450,18 +1454,36 @@ def wapor_dl(
         ".gz" in info_url
     ] + info_url
     info = gdal.Info(info_url, format="json")
+
+    # Determine overview
+    if overview in ["auto", "AUTO"]:
+        if isinstance(region, type(None)):
+            logging.warning("Determining an overview level for an entire L3 region is unsupported, setting overview to `'NONE'`.")
+            overview = "NONE"
+        elif isinstance(region, str) or isinstance(region, list):
+            logging.info("Searching for optimal overview.")
+            overview = determine_overview(info_url, region, max_error=max_error, make_plots=make_plots)
+            logging.info(f"Using overview `{overview}`.")
+        else:
+            raise ValueError
+
     overview_ = -1 if overview == "NONE" else overview
     xres, yres = info["geoTransform"][1::4]
     warp_kwargs = {
         "xRes": abs(xres) * 2 ** (overview_ + 1),
         "yRes": abs(yres) * 2 ** (overview_ + 1),
     }
-
+    
+    # BB | L3-code + L1/L2-variable (output = EPSG:4326)
     if isinstance(region, list):
         warp_kwargs["outputBounds"] = region
         warp_kwargs["outputBoundsSRS"] = "epsg:4326"
+    # GEOJSON (output = EPSG:4326)
     elif isinstance(region, str):
         warp_kwargs["cutlineDSName"] = region
+    # L3-code + L3-variable (output != EPSG:4326)
+    elif isinstance(region, type(None)):
+        ...
     else:
         ...
 
@@ -1497,8 +1519,9 @@ def wapor_dl(
         if not isinstance(filename, type(None)):
             warp_fn = os.path.join(folder, f"{filename}.tif")
         else:
+            overview__ = "NONE" if overview == -1 else overview
             warp_fn = os.path.join(
-                folder, f"{region_code}_{variable}_{overview}_{unit_conversion}.tif"
+                folder, f"{region_code}_{variable}_{overview__}_{unit_conversion}.tif"
             )
     else:
         warp_fn = f"/vsimem/{pd.Timestamp.now()}_{region_code}_{variable}_{overview}_{unit_conversion}.tif"
@@ -1562,6 +1585,8 @@ def wapor_map(
     extension=".tif",
     separate_unscale=False,
     filename=None,
+    make_plots=False,
+    max_error=0.5
 ) -> str:
     """Download a map of a WaPOR3 or agERA5 variable for a specified region and period.
 
@@ -1596,7 +1621,7 @@ def wapor_map(
     """
 
     ## Check if raw-data will be downloaded.
-    if overview != "NONE":
+    if overview not in [-1, "NONE"]:
         logging.warning("Downloading an overview instead of original data.")
 
     ## Check if a valid path to download into has been defined.
@@ -1619,6 +1644,8 @@ def wapor_map(
         unit_conversion=unit_conversion,
         req_stats=None,
         filename=filename,
+        make_plots=make_plots,
+        max_error=max_error,
     )
 
     if extension == ".tif" and separate_unscale:
@@ -1674,6 +1701,8 @@ def wapor_ts(
     overview: Union[str, int],
     unit_conversion="none",
     req_stats=["minimum", "maximum", "mean"],
+    make_plots=False,
+    max_error=0.5
 ) -> pd.DataFrame:
     """Download a timeseries of a WaPOR3 or agERA5 variable for a specified region and period.
 
@@ -1731,6 +1760,8 @@ def wapor_ts(
         req_stats=req_stats,
         unit_conversion=unit_conversion,
         folder=None,
+        max_error=max_error,
+        make_plots=make_plots
     )
 
     return df
