@@ -1,4 +1,5 @@
 import os
+import glob
 import pathlib
 
 import numpy as np
@@ -73,6 +74,58 @@ x = wapor_map(
 )
 
 wapordl.main.use_xarray = True
+
+# #####
+# # DETECTOR CHECKS
+# #####
+fh = os.path.join(test_data_folder, 'detector_shapes/box_1.geojson')
+x1 = wapordl.wapor_map(fh, "L1-T-D", ["2021-01-01", "2021-01-01"], folder, overview = "auto")
+assert str(os.path.split(x1)[-1].split("_")[-2]) == os.path.split(fh)[-1].split("_")[-1].replace(".geojson", "")
+
+fh = os.path.join(test_data_folder, 'detector_shapes/box_3.geojson')
+x2 = wapordl.wapor_map(fh, "L1-T-D", ["2021-01-01", "2021-01-01"], folder, overview = "auto")
+assert str(os.path.split(x2)[-1].split("_")[-2]) == os.path.split(fh)[-1].split("_")[-1].replace(".geojson", "")
+
+fh = os.path.join(test_data_folder, 'detector_shapes/box_5.geojson')
+x3 = wapordl.wapor_map(fh, "L1-T-D", ["2021-01-01", "2021-01-01"], folder, overview = "auto")
+assert str(os.path.split(x3)[-1].split("_")[-2]) == os.path.split(fh)[-1].split("_")[-1].replace(".geojson", "")
+
+fh = os.path.join(test_data_folder, 'detector_shapes/box_NONE.geojson')
+x4 = wapordl.wapor_map(fh, "L1-T-D", ["2021-01-01", "2021-01-01"], folder, overview = "auto")
+assert str(os.path.split(x4)[-1].split("_")[-2]) == os.path.split(fh)[-1].split("_")[-1].replace(".geojson", "")
+
+shape_fhs = glob.glob(r"/Users/hmcoerver/Library/Mobile Documents/com~apple~CloudDocs/GitHub/wapordl/wapordl/test_data/detector_shapes/[!box]*.geojson")
+
+fh = os.path.join(test_data_folder, 'detector_shapes/star.geojson')
+plot_folder = os.path.split(fh)[0]
+pngs = glob.glob(os.path.join(plot_folder, "*.png"))
+for png in pngs:
+    os.remove(png)
+assert len(glob.glob(os.path.join(plot_folder, "*.png"))) == 0
+x5 = wapordl.wapor_map(fh, "L1-T-D", ["2021-01-01", "2021-01-01"], folder, overview = "AUTO", make_plots = plot_folder)
+assert len(glob.glob(os.path.join(plot_folder, "*.png"))) > 0
+pngs = glob.glob(os.path.join(plot_folder, "*.png"))
+for png in pngs:
+    os.remove(png)
+
+fh = os.path.join(test_data_folder, 'detector_shapes/tiny_box.geojson')
+x6 = wapordl.wapor_map(fh, "L1-T-D", ["2021-01-01", "2021-01-01"], os.path.join(folder, "big_xarray"), overview = "AUTO", max_error = 0.001)
+x6_overview = os.path.split(x6)[-1].split("_")[-2]
+if x6_overview == "NONE":
+    x6_overview = -1
+assert int(os.path.split(x5)[-1].split("_")[-2]) > x6_overview
+
+fh = os.path.join(test_data_folder, 'test_MUV.geojson')
+plot_folder = os.path.split(fh)[0]
+pngs = glob.glob(os.path.join(plot_folder, "*.png"))
+for png in pngs:
+    os.remove(png)
+df1 = wapordl.wapor_ts(fh, "L3-AETI-D", ["2021-01-01", "2021-02-01"], overview = "auto", make_plots = plot_folder, max_error = 0.3)
+assert df1["mean"].mean() > 2.5
+pngs = glob.glob(os.path.join(plot_folder, "*.png"))
+for png in pngs:
+    os.remove(png)
+
 #####
 # AGERA5 CHECKS
 #####

@@ -13,6 +13,7 @@ setup(
         "gdal>=3.4.0,<4",
         "shapely>=2.0.0",
         "tqdm",
+        "matplotlib",
     ],
     extras_require={
         "full": [
