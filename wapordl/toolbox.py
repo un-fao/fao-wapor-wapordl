@@ -2,35 +2,7 @@ import os
 from typing import List
 
 import shapely
-from osgeo import gdal, ogr, osr
-
-
-def get_geom(fh: str, lyr_idx: int = 0, ftr_idx: int = 0) -> ogr.Geometry:
-    """Get the geometry from a file, layer and feature index.
-
-    Parameters
-    ----------
-    fh : str
-        Patht to file.
-    lyr_idx : int, optional
-        Which layer index to use, by default 0.
-    ftr_idx : int, optional
-        Which feature index from the layer to use, by default 0.
-
-    Returns
-    -------
-    ogr.Geometry
-        The geometry of the file.
-    """
-    ds = gdal.Dataset(gdal.OpenEx(fh, gdal.OF_VECTOR))
-    layer = ds.GetLayerByIndex(lyr_idx)
-    ftr = ogr.Feature(
-        list(layer)[ftr_idx]
-    )  # NOTE not ideal when there are a lot of features,
-    # but that won't be the case here. Otherwise use
-    # `ogr.Feature(layer.GetNextFeature())` instead.
-    geom = ftr.GetGeometryRef()
-    return geom
+from osgeo import gdal, ogr
 
 
 def get_area(fh: str, lyr_idx: int = 0, ftr_idx: int = 0) -> float:
@@ -50,12 +22,18 @@ def get_area(fh: str, lyr_idx: int = 0, ftr_idx: int = 0) -> float:
     float
         Area of the geometry.
     """
-    geom = get_geom(fh, lyr_idx=lyr_idx, ftr_idx=ftr_idx)
+    ds = gdal.OpenEx(fh, gdal.OF_VECTOR)
+    layer = ds.GetLayerByIndex(lyr_idx)
+    ftr = list(layer)[ftr_idx]  # NOTE not ideal when there are a lot of features,
+    # but that won't be the case here. Otherwise use
+    # `ogr.Feature(layer.GetNextFeature())` instead.
+    geom = ftr.GetGeometryRef()
+    # geom = get_geom(fh, lyr_idx=lyr_idx, ftr_idx=ftr_idx)
     return geom.GetArea()
 
 
 def get_bounds(fh: str, lyr_idx: int = 0, ftr_idx: int = 0) -> List[float]:
-    """Get the bounds of a geometry as [left, right, bottom, top] from a file, 
+    """Get the bounds of a geometry as [left, right, bottom, top] from a file,
     layer and feature index.
 
     Parameters
@@ -72,7 +50,12 @@ def get_bounds(fh: str, lyr_idx: int = 0, ftr_idx: int = 0) -> List[float]:
     List[float]
         The bounds [left, right, bottom, top].
     """
-    geom = get_geom(fh, lyr_idx=lyr_idx, ftr_idx=ftr_idx)
+    ds = gdal.OpenEx(fh, gdal.OF_VECTOR)
+    layer = ds.GetLayerByIndex(lyr_idx)
+    ftr = list(layer)[ftr_idx]  # NOTE not ideal when there are a lot of features,
+    # but that won't be the case here. Otherwise use
+    # `ogr.Feature(layer.GetNextFeature())` instead.
+    geom = ftr.GetGeometryRef()
     bounds = geom.GetEnvelope()
     # NOTE returns xmin, ymin, xmax, ymax (!!!)
     return [bounds[0], bounds[2], bounds[1], bounds[3]]
@@ -95,7 +78,12 @@ def get_shapely(fh: str, lyr_idx: int = 0, ftr_idx: int = 0) -> shapely.Polygon:
     shapely.Polygon
         The shapely geometry object.
     """
-    geom = get_geom(fh, lyr_idx=lyr_idx, ftr_idx=ftr_idx)
+    ds = gdal.OpenEx(fh, gdal.OF_VECTOR)
+    layer = ds.GetLayerByIndex(lyr_idx)
+    ftr = list(layer)[ftr_idx]  # NOTE not ideal when there are a lot of features,
+    # but that won't be the case here. Otherwise use
+    # `ogr.Feature(layer.GetNextFeature())` instead.
+    geom = ftr.GetGeometryRef()
     return shapely.from_wkt(geom.ExportToWkt())
 
 
@@ -113,15 +101,16 @@ def check_vector(fh: str) -> tuple:
         Information about the input file, first value is EPSG code (int), second is
         driver name, third is True if coordinates are 2D.
     """
-    ds = gdal.Dataset(gdal.OpenEx(fh, gdal.OF_VECTOR))
+    # with ogr.Open(fh) as ds: # NOTE does not work in gdal < 3.7, so not using
+    # for backward compatability with Colab.
+    ds = ogr.Open(fh)
 
     driver = ds.GetDriver()
-    layer = ogr.Layer(ds.GetLayer())
-    ftr = ogr.Feature(layer.GetNextFeature())
-    geom = ogr.Geometry(ftr.geometry())
-
+    layer = ds.GetLayer()
+    ftr = layer.GetNextFeature()
+    geom = ftr.geometry()
     is_two_d = geom.CoordinateDimension() == 2
-    spatialRef = osr.SpatialReference(layer.GetSpatialRef())
+    spatialRef = layer.GetSpatialRef()
     epsg = spatialRef.GetAuthorityCode(None)
 
     try:
@@ -133,6 +122,7 @@ def check_vector(fh: str) -> tuple:
             raise e
 
     return int(epsg), getattr(driver, "name", None), is_two_d
+
 
 
 def reproject_vector(fh: str, epsg=4326, in_memory=False) -> str:
@@ -163,7 +153,7 @@ def reproject_vector(fh: str, epsg=4326, in_memory=False) -> str:
         format="GeoJSON",
         dim="XY",
     )
-    x = gdal.Dataset(gdal.VectorTranslate(out_fh, fh, options=options))
+    x = gdal.VectorTranslate(out_fh, fh, options=options)
     x.FlushCache()
     x = None
 
@@ -195,10 +185,10 @@ def bb_to_vsimem(bb: List[float]) -> str:
     wkt = f"POLYGON (({merged_coords}))"
 
     geom = ogr.CreateGeometryFromWkt(wkt)
-    outDriver = ogr.Driver(ogr.GetDriverByName("GeoJSON"))
+    outDriver = ogr.GetDriverByName("GeoJSON")
     fh = "/vsimem/test.geojson"
-    outDataSource = gdal.Dataset(outDriver.CreateDataSource(fh))
-    outLayer = ogr.Layer(outDataSource.CreateLayer("temp", geom_type=ogr.wkbPolygon))
+    outDataSource = outDriver.CreateDataSource(fh)
+    outLayer = outDataSource.CreateLayer("temp", geom_type=ogr.wkbPolygon)
     featureDefn = outLayer.GetLayerDefn()
     outFeature = ogr.Feature(featureDefn)
     outFeature.SetGeometry(geom)

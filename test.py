@@ -16,6 +16,7 @@ from wapordl import (
     wapor_map,
     wapor_ts,
 )
+import wapordl.unit_convertor
 
 module_path = wapordl.__path__[0]
 assert "conda" not in module_path
@@ -36,7 +37,7 @@ variable = "L2-AETI-D"
 l3_region = "BKA"
 extension = ".tif"
 
-wapordl.main.use_xarray = False
+wapordl.unit_convertor.use_xarray = False
 xx_1 = wapor_map(
     region,
     "L2-AETI-M",
@@ -45,7 +46,7 @@ xx_1 = wapor_map(
     unit_conversion="day",
     overview=3,
 )
-wapordl.main.use_xarray = True
+wapordl.unit_convertor.use_xarray = True
 xx_2 = wapor_map(
     region,
     "L2-AETI-M",
@@ -58,9 +59,9 @@ x1 = xr.open_dataset(xx_1)
 x2 = xr.open_dataset(xx_2)
 assert x1.mean() == x2.mean()
 
-wapordl.main.use_xarray = False
+wapordl.unit_convertor.use_xarray = False
 dff_1 = wapor_ts(region, "L2-AETI-M", period, unit_conversion="day", overview=3)
-wapordl.main.use_xarray = True
+wapordl.unit_convertor.use_xarray = True
 dff_2 = wapor_ts(region, "L2-AETI-M", period, unit_conversion="day", overview=3)
 assert dff_1.equals(dff_2)
 
@@ -73,7 +74,7 @@ x = wapor_map(
     unit_conversion="dekad",
 )
 
-wapordl.main.use_xarray = True
+wapordl.unit_convertor.use_xarray = True
 
 # #####
 # # DETECTOR CHECKS
@@ -392,25 +393,25 @@ except ValueError as e:
 
 region_3D = [str(x) for x in l3_regions if "3D" in str(x)][0]
 fp18a = wapor_map(region_3D, "L1-T-D", period, folder)
-assert os.path.isfile(region_3D.replace(".geojson", "_reprojected.geojson"))
-os.remove(region_3D.replace(".geojson", "_reprojected.geojson"))
+assert os.path.isfile(region_3D.replace(".geojson", "_reprojected_4326.geojson"))
+os.remove(region_3D.replace(".geojson", "_reprojected_4326.geojson"))
 
 fp18b = wapor_ts(region_3D, "L1-T-D", period, overview=2)
-assert os.path.isfile(region_3D.replace(".geojson", "_reprojected.geojson"))
-os.remove(region_3D.replace(".geojson", "_reprojected.geojson"))
+assert os.path.isfile(region_3D.replace(".geojson", "_reprojected_4326.geojson"))
+os.remove(region_3D.replace(".geojson", "_reprojected_4326.geojson"))
 
 region_not_4326 = r"/Users/hmcoerver/Library/Mobile Documents/com~apple~CloudDocs/GitHub/wapordl/wapordl/test_data/test_MUV_UTM36N.geojson"
 fp18c = wapor_map(region_not_4326, "L1-T-D", period, folder)
-assert os.path.isfile(region_not_4326.replace(".geojson", "_reprojected.geojson"))
-os.remove(region_not_4326.replace(".geojson", "_reprojected.geojson"))
+assert os.path.isfile(region_not_4326.replace(".geojson", "_reprojected_4326.geojson"))
+os.remove(region_not_4326.replace(".geojson", "_reprojected_4326.geojson"))
 
 region_noCRS = r"/Users/hmcoerver/Library/Mobile Documents/com~apple~CloudDocs/GitHub/wapordl/wapordl/test_data/test_MUV_noCRS.geojson"
 fp18d = wapor_map(region_noCRS, "L1-T-D", period, folder)
 
 region_shpfile = r"/Users/hmcoerver/Library/Mobile Documents/com~apple~CloudDocs/GitHub/wapordl/wapordl/test_data/test_MUV_UTM36N_shp/test_MUV_UTM36N.shp"
 fp18e = wapor_map(region_shpfile, "L1-T-D", period, folder)
-assert os.path.isfile(region_shpfile.replace(".shp", "_reprojected.geojson"))
-os.remove(region_shpfile.replace(".shp", "_reprojected.geojson"))
+assert os.path.isfile(region_shpfile.replace(".shp", "_reprojected_4326.geojson"))
+os.remove(region_shpfile.replace(".shp", "_reprojected_4326.geojson"))
 
 try:  ##
     _ = wapor_map(region, "L1-AETI-M", period, folder, extension=".vrt")

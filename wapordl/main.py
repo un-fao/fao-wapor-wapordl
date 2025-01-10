@@ -862,6 +862,8 @@ def wapor_dl(
             for k, v in md_urls[0][0].items()
             if k in ["long_name", "units", "overview", "original_units"]
         }
+        if out_md.get("overview", "") in ["auto", "AUTO"]:
+            out_md["overview"] = f"AUTO:{overview}"
         data.attrs = out_md
     else:
         data = warp_fn
