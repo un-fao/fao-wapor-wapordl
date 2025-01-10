@@ -1,6 +1,6 @@
-import glob
 import logging
 import os
+from typing import List
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,7 +12,32 @@ import wapordl.toolbox as toolbox
 gdal.UseExceptions()
 
 
-def geot_area(shape_fh: str, geot: list, zero_is_nan=True, make_plots=False) -> float:
+def geot_area(
+    shape_fh: str,
+    geot: List[float],
+    zero_is_nan: bool = True,
+    make_plots: bool | str = False,
+) -> float:
+    """Given a shape and a geotransform, this functions calculates the area of the pixels
+    that would cover the shape.
+
+    Parameters
+    ----------
+    shape_fh : str
+        Path to a vector-file than can be opened by `gdal.OpenEx`.
+    geot : List[float]
+        A geotransform describing the locations of pixels of a raster.
+    zero_is_nan : bool, optional
+        Set the output to `np.nan` if the resulting area is zero, by default True.
+    make_plots : bool | str, optional
+        Create a plot visualising the shape and the overlapping raster. If a path to an existing
+        folder is given, the plot is saved as a png file, by default False.
+
+    Returns
+    -------
+    float
+        Area of the pixels that would overlap with the shape.
+    """
     # Get the bounding-box of the shape
     bounds = toolbox.get_bounds(shape_fh)
     coords = np.array(bounds).reshape((2, 2))
@@ -119,7 +144,34 @@ def geot_area(shape_fh: str, geot: list, zero_is_nan=True, make_plots=False) -> 
     return area
 
 
-def determine_overview(info_fh, shape_fh, max_error=0.5, make_plots=False):
+def determine_overview(
+    info_fh: str,
+    shape_fh: str | List[float],
+    max_error: float = 0.5,
+    make_plots: bool | str = False,
+) -> int:
+    """Given a raster file, iterates over the geotransforms of the raster and any
+    overviews present and checks how well the pixels are able to represent a given shape.
+
+    Parameters
+    ----------
+    info_fh : str
+        Path to a raster file.
+    shape_fh : str | List[float]
+        Path to a vector file or a list describing a bounding-box as
+        [xmin, ymin, xmax, ymax].
+    max_error : float, optional
+        Threshold for the iteration, by default 0.5.
+    make_plots : bool | str, optional
+        Create graphs showing the iteration process executed to determine the
+        optimal overview. When an existing folder is defined, the graphs
+        are saved into that folder as png files, by default False.
+
+    Returns
+    -------
+    int
+        The selected overview.
+    """
     # Load raster information.
     info = gdal.Info(info_fh, format="json")
     epsg = int(info["coordinateSystem"]["wkt"].split('ID["EPSG",')[-1][:-2])
@@ -213,33 +265,4 @@ def determine_overview(info_fh, shape_fh, max_error=0.5, make_plots=False):
 
 
 if __name__ == "__main__":
-    region = "BKA"
-    variable = "L1-T-D"
-    period = ["2021-01-01", "2021-01-01"]
-    overview = -1
-    folder = "/Users/hmcoerver/Local/auto_detect"
-    lyr_idx = 0
-    ftr_idx = 0
-
-    shape_fhs = glob.glob(
-        r"/Users/hmcoerver/Library/Mobile Documents/com~apple~CloudDocs/GitHub/wapordl/wapordl/test_data/detector_shapes/*.geojson"
-    )
-    i = 2
-    shape_fh = shape_fhs[i]
-    # shape_fh = "/Users/hmcoerver/Library/Mobile Documents/com~apple~CloudDocs/GitHub/wapordl/wapordl/test_data/test_MUV.geojson"
-    shape_fh = "/Users/hmcoerver/Library/Mobile Documents/com~apple~CloudDocs/GitHub/wapordl/wapordl/test_data/detector_shapes/star.geojson"
-    bb = toolbox.get_bounds(shape_fh)
-
-    # info_fh = "/vsicurl/https://storage.googleapis.com/fao-gismgr-wapor-3-data/DATA/WAPOR-3/MOSAICSET/L3-AETI-D/WAPOR-3.L3-AETI-D.MUV.2021-01-D1.tif"
-    info_fh = "/vsicurl/https://storage.googleapis.com/fao-gismgr-wapor-3-data/DATA/WAPOR-3/MAPSET/L1-T-D/WAPOR-3.L1-T-D.2021-01-D1.tif"
-
-    overview = determine_overview(info_fh, shape_fh, make_plots=True, max_error=0.5)
-
-    # print(shape_fh, overview)
-
-    # # Below is purely for debugging/development, should not be used in final solution.
-    # # grid = make_grid(shape, geot_)
-
-    # # geot = [-180.0, 0.0029296875, 0.0, 90.0, 0.0, -0.0029296875]
-    # # shape_fh = '/Users/hmcoerver/Local/auto_detect/test_shapes/star.geojson'
-    # test_fh = wapordl.wapor_map(shape_fh, variable, period, folder, overview=overview)
+    ...

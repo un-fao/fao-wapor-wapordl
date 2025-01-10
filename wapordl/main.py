@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import List, Union
+from typing import List, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -25,7 +25,7 @@ logging.basicConfig(
 
 
 def guess_l3_region(region_shape: shapely.Polygon) -> str:
-    """Given a shapely.Polygon, determines the WaPOR level-3 region code (three letters)
+    """Given a `shapely.Polygon`, determines the WaPOR level-3 region code (three letters)
     with which the given shape overlaps.
 
     Parameters
@@ -74,7 +74,7 @@ def guess_l3_region(region_shape: shapely.Polygon) -> str:
     return l3_region
 
 
-def collect_responses(url: str, info=["code"]) -> list:
+def collect_responses(url: str, info: List[str] =["code"]) -> list:
     """Calls GISMGR2.0 API and collects responses.
 
     Parameters
@@ -82,7 +82,7 @@ def collect_responses(url: str, info=["code"]) -> list:
     url : str
         URL to get.
     info : list, optional
-        Used to filter the response, set to `None` to keep everything, by default ["code"].
+        Used to filter the response, set to `None` to keep everything, by default `["code"]`.
 
     Returns
     -------
@@ -119,7 +119,7 @@ def date_func(url: str, tres: str) -> dict:
     url : str
         URL linking to a resource.
     tres : str
-        One of "E" (daily), "D" (dekadal), "M" (monthly), "A" (annual).
+        One of `"E"` (daily), `"D"` (dekadal), `"M"` (monthly), `"A"` (annual).
 
     Returns
     -------
@@ -234,7 +234,7 @@ def collect_metadata(variable: str) -> dict:
     return var_codes[variable]
 
 
-def make_dekad_dates(period: list, max_date=None) -> list:
+def make_dekad_dates(period: List[str], max_date: pd.Timestamp | None = None) -> List[pd.Timestamp]:
     """Make a list of dekadal timestamps between a start and end date.
 
     Parameters
@@ -264,7 +264,7 @@ def make_dekad_dates(period: list, max_date=None) -> list:
     return x_filtered
 
 
-def make_monthly_dates(period: list, max_date=None) -> list:
+def make_monthly_dates(period: List[str], max_date: pd.Timestamp | None = None) -> List[pd.Timestamp]:
     """Make a list of monthly timestamps between a start and end date.
 
     Parameters
@@ -288,7 +288,7 @@ def make_monthly_dates(period: list, max_date=None) -> list:
     return x_filtered
 
 
-def make_annual_dates(period: list, max_date=None) -> list:
+def make_annual_dates(period: List[str], max_date: pd.Timestamp | None = None) -> List[pd.Timestamp]:
     """Make a list of annual timestamps between a start and end date.
 
     Parameters
@@ -312,7 +312,7 @@ def make_annual_dates(period: list, max_date=None) -> list:
     return x_filtered
 
 
-def make_daily_dates(period: list, max_date=None) -> list:
+def make_daily_dates(period: List[str], max_date: pd.Timestamp | None = None) -> List[pd.Timestamp]:
     """Make a list of daily timestamps between a start and end date.
 
     Parameters
@@ -335,7 +335,7 @@ def make_daily_dates(period: list, max_date=None) -> list:
     return x_filtered
 
 
-def generate_urls_agERA5(variable: str, period=None, check_urls=True) -> tuple:
+def generate_urls_agERA5(variable: str, period: List[str] | None = None, check_urls: bool = True) -> Tuple[str]:
     """Find resource URLs for an agERA5 variable for a specified period.
 
     Parameters
@@ -422,7 +422,7 @@ def generate_urls_agERA5(variable: str, period=None, check_urls=True) -> tuple:
     return tuple(sorted(urls))
 
 
-def generate_urls_v3(variable: str, l3_region=None, period=None) -> tuple:
+def generate_urls_v3(variable: str, l3_region: str | None = None, period: List[str] | None =None) -> Tuple[str]:
     """Find resource URLs for an agERA5 variable for a specified period.
 
     Parameters
@@ -468,13 +468,13 @@ def generate_urls_v3(variable: str, l3_region=None, period=None) -> tuple:
 
 
 def cog_dl(
-    urls: list,
+    urls: List[str],
     out_fn: str,
-    overview="NONE",
-    warp_kwargs={},
-    vrt_options={"separate": True},
-    unit_conversion="none",
-) -> tuple:
+    overview: str | int = "NONE",
+    warp_kwargs: dict = {},
+    vrt_options: dict = {"separate": True},
+    unit_conversion: str = "none",
+) -> Tuple[str]:
     """Download multiple COGs into the bands of a single geotif or netcdf file.
 
     Parameters
@@ -483,8 +483,10 @@ def cog_dl(
         URLs of the different COGs to be downloaded.
     out_fn : str
         Path to the output file.
-    overview : str, optional
-        Select which overview from the COGs to use, by default "NONE".
+    overview : str | int, optional
+        Select which overview from the COGs to use. Can be "NONE" or -1 to use the original data, 
+        an integer from 0 up to the total of overviews available or "AUTO" for 
+        automatic overview detection, by default "NONE".
     warp_kwargs : dict, optional
         Additional gdal.Warp keyword arguments, by default {}.
     vrt_options : dict, optional
@@ -585,16 +587,16 @@ def cog_dl(
 
 
 def wapor_dl(
-    region: Union[str, List[float], None],
+    region: str | List[float] | None,
     variable: str,
-    period=["2021-01-01", "2022-01-01"],
-    overview="NONE",
-    unit_conversion="none",
-    req_stats=["minimum", "maximum", "mean"],
-    folder=None,
-    filename=None,
-    max_error=0.5,
-    make_plots=False,
+    period: List[str] = ["2021-01-01", "2022-01-01"],
+    overview: str | int = "NONE",
+    unit_conversion: str ="none",
+    req_stats: List[str] = ["minimum", "maximum", "mean"],
+    folder: str | None = None,
+    filename: str | None = None,
+    max_error: float = 0.5,
+    make_plots: bool | str = False,
 ) -> Union[str, pd.DataFrame]:
     """Download a WaPOR or agERA5 variable for a specified region and period.
 
@@ -607,8 +609,10 @@ def wapor_dl(
         Name of the variable to download.
     period : list, optional
         Period for which to download data, by default ["2021-01-01", "2022-01-01"].
-    overview : str, optional
-        Which overview of the COGs to use, by default "NONE".
+    overview : str | int, optional
+        Select which overview from the COGs to use. Can be "NONE" or -1 to use the original data, 
+        an integer from 0 up to the total of overviews available or "AUTO" for 
+        automatic overview detection, by default "NONE".
     unit_conversion : str, optional
         Apply a unit conversion on the created file, can be one of "none", "day", "dekad",
         "month" or "year", by default "none".
@@ -619,7 +623,13 @@ def wapor_dl(
         Path to a folder in which to save any (intermediate) files. If set to `None`, everything will be
         kept in memory, by default None.
     filename : str, optional
-        Set a different name for the output file.
+        Set a different name for the output file, by default None.
+    max_error : float, optional
+        Only used when `overview` is set to `"AUTO"`, sets the error threshold, by default 0.5.
+    make_plots : bool | str, optional
+        Only used when `overview` is set to `"AUTO"`, create graphs showing the iteration process
+        executed to determine the optimal overview. When a existing folder is defined, the graphs
+        are saved into that folder as png files, by default False.
 
     Returns
     -------
@@ -868,15 +878,15 @@ def wapor_dl(
 def wapor_map(
     region: Union[str, List[float], None],
     variable: str,
-    period: list,
+    period: List[str],
     folder: str,
-    unit_conversion="none",
-    overview="NONE",
-    extension=".tif",
-    separate_unscale=False,
-    filename=None,
-    make_plots=False,
-    max_error=0.5,
+    unit_conversion: str = "none",
+    overview: str | int = "NONE",
+    extension: str = ".tif",
+    separate_unscale: bool = False,
+    filename: str | None = None,
+    max_error: float = 0.5,
+    make_plots: bool | str = False,
 ) -> str:
     """Download a map of a WaPOR3 or agERA5 variable for a specified region and period.
 
@@ -894,15 +904,23 @@ def wapor_map(
     unit_conversion : str, optional
         Apply a unit conversion on the created file, can be one of "none", "day", "dekad",
         "month" or "year", by default "none".
-    overview : str, optional
-        Which overview of the COGs to use, by default "NONE".
+    overview : str | int, optional
+        Select which overview from the COGs to use. Can be "NONE" or -1 to use the original data, 
+        an integer from 0 up to the total of overviews available or "AUTO" for 
+        automatic overview detection, by default "NONE".
     extension : str, optional
         One of ".tif" or ".nc", controls output format, by default ".tif".
     separate_unscale : bool, optional
         Set to `True` to create single band geotif files instead of a single geotif with multiple bands,
         does not do anything when extension is set to ".nc" , by default False.
     filename : str, optional
-        Set a different name for the output file.
+        Set a different name for the output file, by default None.
+    max_error : float, optional
+        Only used when `overview` is set to `"AUTO"`, sets the error threshold, by default 0.5.
+    make_plots : bool | str, optional
+        Only used when `overview` is set to `"AUTO"`, create graphs showing the iteration process
+        executed to determine the optimal overview. When a existing folder is defined, the graphs
+        are saved into that folder as png files, by default False.
 
     Returns
     -------
@@ -987,12 +1005,12 @@ def wapor_map(
 def wapor_ts(
     region: Union[str, List[float], None],
     variable: str,
-    period: list,
-    overview: Union[str, int],
-    unit_conversion="none",
-    req_stats=["minimum", "maximum", "mean"],
-    make_plots=False,
-    max_error=0.5,
+    period: List[str],
+    overview: str | int = "NONE",
+    unit_conversion: str = "none",
+    req_stats: List[str] = ["minimum", "maximum", "mean"],
+    max_error: float = 0.5,
+    make_plots: bool | str = False,
 ) -> pd.DataFrame:
     """Download a timeseries of a WaPOR3 or agERA5 variable for a specified region and period.
 
@@ -1005,13 +1023,21 @@ def wapor_ts(
         Name of the variable to download.
     period : list
         Period for which to download data.
-    overview : Union[str, int]
-        Which overview of the COGs to use, by default "NONE".
+    overview : str | int, optional
+        Select which overview from the COGs to use. Can be "NONE" or -1 to use the original data, 
+        an integer from 0 up to the total of overviews available or "AUTO" for 
+        automatic overview detection, by default "NONE".
     unit_conversion : str, optional
         Apply a unit conversion on the created file, can be one of "none", "day", "dekad",
         "month" or "year", by default "none".
     req_stats : list, optional
         Specify which statistics to include in the output, by default ["minimum", "maximum", "mean"].
+    max_error : float, optional
+        Only used when `overview` is set to `"AUTO"`, sets the error threshold, by default 0.5.
+    make_plots : bool | str, optional
+        Only used when `overview` is set to `"AUTO"`, create graphs showing the iteration process
+        executed to determine the optimal overview. When a existing folder is defined, the graphs
+        are saved into that folder as png files, by default False.
 
     Returns
     -------
@@ -1100,6 +1126,14 @@ def l3_bounding_boxes(variable="L3-T-A", l3_region=None) -> dict:
 
 
 def update_L3_BBS():
+    """Add bounding-boxes to the global `L3_BBS` in case they are not yet hard-coded,
+    in case new areas have come online since the last WaPORDL release.
+
+    Returns
+    -------
+    list
+        list with three letter codes for new areas.
+    """
     logging.info("Updating L3 bounding-boxes.")
     all_l3_regions = l3_codes()
     new_regions = set(all_l3_regions.keys()).difference(set(L3_BBS.keys()))
