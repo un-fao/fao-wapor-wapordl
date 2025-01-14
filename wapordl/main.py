@@ -16,12 +16,6 @@ from wapordl.unit_convertor import unit_convertor
 from wapordl.variable_descriptions import AGERA5_VARS, WAPOR3_VARS
 
 gdal.UseExceptions()
-logging.basicConfig(
-    encoding="utf-8",
-    level=logging.INFO,
-    format="%(levelname)s: %(message)s",
-    force=True,
-)
 
 
 def guess_l3_region(region_shape: shapely.Polygon) -> str:
