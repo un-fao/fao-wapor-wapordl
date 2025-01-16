@@ -1,13 +1,20 @@
+import importlib.util
 import logging
 import os
 from typing import List
 
-import matplotlib.pyplot as plt
 import numpy as np
-import shapely.plotting
 from osgeo import gdal
 
-import wapordl.toolbox as toolbox
+import wapordl.toolbox.ogr_gdal as ogr_gdal
+
+optional_packages = ["matplotlib"]
+use_plt = all(
+    [not isinstance(importlib.util.find_spec(x), type(None)) for x in optional_packages]
+)
+if use_plt:
+    import matplotlib.patches
+    import matplotlib.pyplot as plt
 
 gdal.UseExceptions()
 
@@ -38,8 +45,10 @@ def geot_area(
     float
         Area of the pixels that would overlap with the shape.
     """
+    global use_plt
+
     # Get the bounding-box of the shape
-    bounds = toolbox.get_bounds(shape_fh)
+    bounds = ogr_gdal.get_bounds(shape_fh)
     coords = np.array(bounds).reshape((2, 2))
 
     # List which pixels intersect with the bb.
@@ -94,7 +103,11 @@ def geot_area(
     if zero_is_nan and area == 0.0:
         area = np.nan
 
-    if make_plots and area not in [0.0, np.nan]:
+    if make_plots and not use_plt:
+        logging.info(
+            "Unable to create plots without `matplotlib`, consider installing it or setting `make_plots=False`."
+        )
+    elif make_plots and area not in [0.0, np.nan] and use_plt:
         fig = plt.figure()
         ax = fig.gca()
 
@@ -105,14 +118,16 @@ def geot_area(
             zorder=0,
         )
 
-        shape = toolbox.get_shapely(shape_fh)
-        _ = shapely.plotting.plot_polygon(
-            shapely.unary_union(shape),
-            ax=ax,
-            add_points=True,
+        geom, _ = ogr_gdal.get_geom(shape_fh)[:2]
+        wkt = geom.UnaryUnion().ExportToWkt()
+        coords = ogr_gdal.wkt_polygon_to_coords(wkt)
+        shape_patch = matplotlib.patches.Polygon(
+            coords,
             color="tab:red",
             zorder=10,
+            alpha=0.4,
         )
+        ax.add_patch(shape_patch)
 
         xticks_minor = np.arange(bounds[0], bounds[2], geot[1])
         xticks = np.arange(
@@ -140,6 +155,8 @@ def geot_area(
                 f"{area}_{os.path.split(shape_fh)[-1].replace('.geojson', '')}.png",
             )
             fig.savefig(plot_fh)
+    else:
+        ...
 
     return area
 
@@ -172,16 +189,18 @@ def determine_overview(
     int
         The selected overview.
     """
+    global use_plt
+
     # Load raster information.
-    info = gdal.Info(info_fh, format="json")
+    info = ogr_gdal.get_info(info_fh)
     epsg = int(info["coordinateSystem"]["wkt"].split('ID["EPSG",')[-1][:-2])
 
     if isinstance(shape_fh, list):
-        shape_fh = toolbox.bb_to_vsimem(shape_fh)
+        shape_fh = ogr_gdal.to_vsimem(bb=shape_fh)
     if epsg != 4326:
-        shape_fh = toolbox.reproject_vector(shape_fh, epsg=epsg, in_memory=True)
+        shape_fh = ogr_gdal.reproject_vector(shape_fh, epsg=epsg, in_memory=True)
 
-    shape_area = toolbox.get_area(shape_fh)
+    shape_area = ogr_gdal.get_area(shape_fh)
 
     # Determine the scales to convert the original geot.
     res = np.array(info["size"])
@@ -221,8 +240,14 @@ def determine_overview(
     else:
         overview = overviews[np.nanargmin(errors)]
 
+    ogr_gdal.unlink_vsimems(shape_fh)
+
     # Create a plot if necessary.
-    if make_plots:
+    if make_plots and not use_plt:
+        logging.info(
+            "Unable to create plots without `matplotlib`, consider installing it or setting `make_plots=False`."
+        )
+    elif make_plots and use_plt:
         fig = plt.figure()
         ax = fig.gca()
         if len(errors) >= 2:
@@ -260,6 +285,8 @@ def determine_overview(
                 f"{overview}_{os.path.split(shape_fh)[-1].replace('.geojson', '')}.png",
             )
             fig.savefig(plot_fh)
+    else:
+        ...
 
     return overview
 

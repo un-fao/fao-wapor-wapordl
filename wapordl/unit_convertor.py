@@ -12,11 +12,6 @@ use_xarray = all(
 )
 if use_xarray:
     import xarray as xr
-else:
-    logging.info(
-        "Consider installing `xarray`, `rioxarray` and `dask` for faster unit conversions."
-    )
-
 
 def __make_band_names__(length):
     letters = [x for x in ascii_lowercase + ascii_uppercase]
@@ -184,6 +179,9 @@ def unit_convertor(
             )
             filen = out_fn
         else:
+            logging.info(
+                "Consider installing `xarray`, `rioxarray` and `dask` for faster unit conversions."
+            )
             warp = gdal_calc.Calc(
                 calc=calc,
                 outfile=out_fn,

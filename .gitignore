@@ -10,8 +10,6 @@
 *__pycache__
 *.pytest_cache
 
-examples/*
-
 # Compiled Python bytecode
 *.py[cod]
 

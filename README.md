@@ -12,7 +12,7 @@ Install using conda by doing:
 `conda install -c conda-forge wapordl`
 
 ### Pip (make sure GDAL is already installed in your environment)
-To install with support for faster unit conversion do:
+To install with support for (1) faster unit conversions, (2) progress bars and (3) plotting do:
 
 `pip install "wapordl[full]"`
 
@@ -27,29 +27,31 @@ To download a timeseries for a certain region:
 ```python
 from wapordl import wapor_ts
 
-region = "path/to/some/shape.geojson"
+region = "test_data/test_MUV.geojson"
 variable = "L2-AETI-D"
 period = ["2021-01-01", "2021-07-01"]
-overview = 3 # set to "NONE" to use native resolution data.
+overview = "AUTO" # set to "NONE" to use native resolution data.
+# and check out examples/overviews.ipynb for a longer explanation
+# of what this does.
 
 df = wapor_ts(region, variable, period, overview)
 
 df
 
 >>>     minimum  maximum    mean start_date   end_date number_of_days
->>> 0       0.0      7.3  0.5962 2021-01-01 2021-01-10        10 days
->>> 1       0.0      6.7  0.3923 2021-01-11 2021-01-20        10 days
->>> 2       0.0      6.7  0.3158 2021-01-21 2021-01-31        11 days
+>>> 0       0.7      3.0  2.3243 2021-01-01 2021-01-10        10 days
+>>> 1       0.5      2.2  1.7202 2021-01-11 2021-01-20        10 days
+>>> 2       0.9      3.7  2.9348 2021-01-21 2021-01-31        11 days
 >>> ...
->>> 16      0.0      4.8  0.3192 2021-06-11 2021-06-20        10 days
->>> 17      0.0      4.9  0.4197 2021-06-21 2021-06-30        10 days
->>> 18      0.0      5.0  0.5727 2021-07-01 2021-07-10        10 days
+>>> 16      0.7      3.5  1.8653 2021-06-11 2021-06-20        10 days
+>>> 17      0.8      4.1  1.9838 2021-06-21 2021-06-30        10 days
+>>> 18      0.8      3.9  1.8965 2021-07-01 2021-07-10        10 days
 
 df.attrs
 
 >>> {'long_name': 'Actual EvapoTranspiration and Interception',
->>> 'units': 'mm/day',
->>> 'overview': 3}
+>>>  'units': 'mm/day',
+>>>  'overview': 'AUTO:0'}
 ```
 
 To download a timerseries and convert its unit provide the `unit_conversion` keyword:
@@ -57,18 +59,18 @@ To download a timerseries and convert its unit provide the `unit_conversion` key
 ```python
 unit = "dekad" # or choose "day", "month", "year", "none" (default).
 
-df = wapor_ts(region, variable, period, overview, unit_conversion = unit)
+df = wapor_ts(region, variable, period, overview = 3, unit_conversion = unit)
 
 df
 
 >>>     minimum  maximum    mean start_date   end_date number_of_days
->>> 0       0.0     73.0  5.9617 2021-01-01 2021-01-10        10 days
->>> 1       0.0     67.0  3.9235 2021-01-11 2021-01-20        10 days
->>> 2       0.0     73.7  3.4740 2021-01-21 2021-01-31        11 days
+>>> 0      16.0     26.0  23.6857 2021-01-01 2021-01-10        10 days
+>>> 1      12.0     19.0  17.6286 2021-01-11 2021-01-20        10 days
+>>> 2      23.1     36.3  32.6857 2021-01-21 2021-01-31        11 days
 >>> ...
->>> 16      0.0     48.0  3.1919 2021-06-11 2021-06-20        10 days
->>> 17      0.0     49.0  4.1972 2021-06-21 2021-06-30        10 days
->>> 18      0.0     50.0  5.7273 2021-07-01 2021-07-10        10 days
+>>> 16     15.0     24.0  19.0857 2021-06-11 2021-06-20        10 days
+>>> 17     16.0     27.0  20.2000 2021-06-21 2021-06-30        10 days
+>>> 18     15.0     27.0  19.3143 2021-07-01 2021-07-10        10 days
 
 df.attrs
 
@@ -108,7 +110,7 @@ region = [35.75, 33.70, 35.82, 33.75] # [xmin, ymin, xmax, ymax]
 folder = "path/to/some/output/folder"
 variable = "L3-AETI-D"
 period = ["2021-01-01", "2021-07-01"]
-overview = 3
+overview = "NONE"
 
 df = wapor_ts(region, variable, period, overview)
 fp = wapor_map(region, variable, period, folder, extension = ".nc")
@@ -129,7 +131,7 @@ fp = wapor_map(region, variable, period, folder, unit_conversion = "year")
 
 ## Upcoming
 
-- Automatic overview selection based on the size of the shape.
+- ~~Automatic overview selection based on the size and shape of the region.~~ ✅
 - ~~Docstrings for all functions.~~ ✅
 - ~~Option to split multiband GeoTIFF into single band files.~~ ✅
 - ~~Support for variables with daily resolution (i.e. `L1-PCP-E` and `L1-RET-E`).~~ ✅
