@@ -150,15 +150,15 @@ To get an overview of all the available L3 regions, run:
 ```python
 wapordl.region_selector.l3_codes()
 
-{
-    'ERB': 'Erbil, Iraq',
-    'KAI': 'Kairouan, Tunisia',
-    'BKA': 'Bekaa, Lebanon',
-...
-    'LOU': 'Moulay Bousselham, Morocco',
-    'ZAN': 'Zankalon, Egypt',
-    'MAG': 'Magdalena, Colombia'
-}
+>>> {
+>>>     'ERB': 'Erbil, Iraq',
+>>>     'KAI': 'Kairouan, Tunisia',
+>>>     'BKA': 'Bekaa, Lebanon',
+>>> ...
+>>>     'LOU': 'Moulay Bousselham, Morocco',
+>>>     'ZAN': 'Zankalon, Egypt',
+>>>     'MAG': 'Magdalena, Colombia'
+>>> }
 ```
 
 ## Upcoming
