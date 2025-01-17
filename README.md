@@ -1,4 +1,6 @@
-![downloads](https://img.shields.io/pypi/dw/wapordl) [![version](https://img.shields.io/pypi/v/wapordl)](https://anaconda.org/conda-forge/wapordl)
+![pip_downloads](https://img.shields.io/pypi/dw/wapordl?label=pip%7Cdownloads
+) ![conda_downloads](https://img.shields.io/conda/d/conda-forge/wapordl) [![version](https://img.shields.io/pypi/v/wapordl?label=current%20version
+)](https://anaconda.org/conda-forge/wapordl)
 
 # WaPORDL
 
@@ -25,7 +27,7 @@ Otherwise, the following suffices:
 To download a timeseries for a certain region:
 
 ```python
-from wapordl import wapor_ts
+import wapordl
 
 region = "test_data/test_MUV.geojson"
 variable = "L2-AETI-D"
@@ -34,7 +36,7 @@ overview = "AUTO" # set to "NONE" to use native resolution data.
 # and check out examples/overviews.ipynb for a longer explanation
 # of what this does.
 
-df = wapor_ts(region, variable, period, overview)
+df = wapordl.wapor_ts(region, variable, period, overview)
 
 df
 
@@ -54,12 +56,28 @@ df.attrs
 >>>  'overview': 'AUTO:0'}
 ```
 
+Variable names always consist of three parts defining (1) the `level` (`L1`, `L2`, `L3` or `AGERA5`), (2) the variable (e.g. ` AETI`) and (3) the temporal resolution (`A` for annual, `M` for monthly, `D` for dekadal and `E` for daily). To see which variables are available, check `wapordl.variable_descriptions.WAPOR3_VARS` and `wapordl.variable_descriptions.AGERA5_VARS`, e.g.:
+
+```python
+wapordl.variable_descriptions.WAPOR3_VARS
+
+>>> {
+>>>     'L1-AETI-A': {'long_name': 'Actual EvapoTranspiration and Interception', 'units': 'mm/year'},
+>>>     'L1-AETI-D': {'long_name': 'Actual EvapoTranspiration and Interception', 'units': 'mm/day'},
+>>>     'L1-AETI-M': {'long_name': 'Actual EvapoTranspiration and Interception', 'units': 'mm/month'}
+>>> ...
+>>>     'L3-T-A': {'long_name': 'Transpiration', 'units': 'mm/year'},
+>>>     'L3-T-D': {'long_name': 'Transpiration', 'units': 'mm/day'},
+>>>     'L3-TBP-A': {'long_name': 'Total Biomass Production', 'units': 'kg/ha'}
+>>> }
+```
+
 To download a timerseries and convert its unit provide the `unit_conversion` keyword:
 
 ```python
 unit = "dekad" # or choose "day", "month", "year", "none" (default).
 
-df = wapor_ts(region, variable, period, overview = 3, unit_conversion = unit)
+df = wapordl.wapor_ts(region, variable, period, overview = 3, unit_conversion = unit)
 
 df
 
@@ -83,14 +101,12 @@ df.attrs
 To download a geotiff for a certain region and period of time:
 
 ```python
-from wapordl import wapor_map
-
 region = "path/to/some/my_region.geojson"
 folder = "path/to/some/output/folder"
 variable = "L2-AETI-D"
 period = ["2021-01-01", "2021-07-01"]
 
-fp = wapor_map(region, variable, period, folder)
+fp = wapordl.wapor_map(region, variable, period, folder)
 
 fp
 
@@ -100,7 +116,7 @@ fp
 To save downloaded data in unscaled single-band files (instead of 1 file with multiple bands), set the `separate_unscale` keyword. Note that this will results in larger files.
 
 ```python
-fps = wapor_map(region, "L2-AETI-D", period, folder, separate_unscale = True)
+fps = wapordl.wapor_map(region, "L2-AETI-D", period, folder, separate_unscale = True)
 ```
 
 To download a timeseries and a netcdf for a bounding-box:
@@ -112,8 +128,8 @@ variable = "L3-AETI-D"
 period = ["2021-01-01", "2021-07-01"]
 overview = "NONE"
 
-df = wapor_ts(region, variable, period, overview)
-fp = wapor_map(region, variable, period, folder, extension = ".nc")
+df = wapordl.wapor_ts(region, variable, period, overview)
+fp = wapordl.wapor_map(region, variable, period, folder, extension = ".nc")
 ```
 
 When working with level-3 data, an entire L3 region can be downloaded by specifying a three letter region code:
@@ -125,8 +141,8 @@ variable = "L3-T-D"
 period = ["2021-01-01", "2021-07-01"]
 overview = 3
 
-df = wapor_ts(region, variable, period, overview)
-fp = wapor_map(region, variable, period, folder, unit_conversion = "year")
+df = wapordl.wapor_ts(region, variable, period, overview)
+fp = wapordl.wapor_map(region, variable, period, folder, unit_conversion = "year")
 ```
 
 ## Upcoming
