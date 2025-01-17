@@ -180,4 +180,4 @@ wapordl.region_selector.l3_codes()
 - ~~More log information.~~ ✅
 - ~~Option to select region for Level-3 data.~~ ✅
 
-Got a feature-request or a question? Don't hesitate to contact me at bert.coerver@fao.org.
+Got a feature-request or a question? Don't hesitate to contact me at bert.coerver@fao.org or open an [issue here](https://bitbucket.org/cioapps/wapordl/issues?status=new&status=open&status=submitted&is_spam=!spam).
