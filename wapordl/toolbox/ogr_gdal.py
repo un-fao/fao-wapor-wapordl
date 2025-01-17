@@ -19,7 +19,8 @@ if use_tqdm:
 
 gdal.UseExceptions()
 
-def extension_in_gdal_drivers(extension, raise_error = False):
+
+def extension_in_gdal_drivers(extension, raise_error=False):
     succes = False
     for i in range(gdal.GetDriverCount()):
         drv = gdal.GetDriver(i)
@@ -39,18 +40,24 @@ def extension_in_gdal_drivers(extension, raise_error = False):
     if not succes:
         if extension in guess.keys():
             logging.warning(f"No driver found for `{guess[extension][1]}`.")
-            logging.warning(f"Run `conda install -c conda-forge {guess[extension][0]}` to install a driver for `{guess[extension][1]}`.")
+            logging.warning(
+                f"Run `conda install -c conda-forge {guess[extension][0]}` to install a driver for `{guess[extension][1]}`."
+            )
         else:
             logging.warning(f"No driver found for `{extension}`.")
         if raise_error:
-            raise ValueError(f"No driver found for `{guess.get(extension, ['', extension])[1]}`.")
+            raise ValueError(
+                f"No driver found for `{guess.get(extension, ['', extension])[1]}`."
+            )
     return succes
+
 
 _ = extension_in_gdal_drivers(".tif")
 _ = extension_in_gdal_drivers(".nc")
 _ = extension_in_gdal_drivers(".shp")
 _ = extension_in_gdal_drivers(".geojson")
 _ = extension_in_gdal_drivers(".gpkg")
+
 
 def unlink_vsimems(paths):
     if not isinstance(paths, list):
@@ -653,4 +660,3 @@ if __name__ == "__main__":
     from osgeo import gdal
 
     extension = ".nc"
-
