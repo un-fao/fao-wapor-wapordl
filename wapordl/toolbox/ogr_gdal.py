@@ -19,6 +19,38 @@ if use_tqdm:
 
 gdal.UseExceptions()
 
+def extension_in_gdal_drivers(extension, raise_error = False):
+    succes = False
+    for i in range(gdal.GetDriverCount()):
+        drv = gdal.GetDriver(i)
+        extensions = drv.GetMetadataItem(gdal.DMD_EXTENSIONS)
+        # md = drv.GetMetadata_Dict()
+        # shortname = drv.ShortName
+        # longname = drv.LongName
+        # is_raster = 'DCAP_RASTER' in md
+        # is_vector = 'DCAP_VECTOR' in md
+        if extensions is not None:
+            if extension.replace(".", "") in extensions:
+                succes = True
+    guess = {
+        ".nc": ("libgdal-netcdf", "netCDF"),
+        ".jp2": ("libgdal-jp2openjpeg", "JP2OpenJPEG"),
+    }
+    if not succes:
+        if extension in guess.keys():
+            logging.warning(f"No driver found for `{guess[extension][1]}`.")
+            logging.warning(f"Run `conda install -c conda-forge {guess[extension][0]}` to install a driver for `{guess[extension][1]}`.")
+        else:
+            logging.warning(f"No driver found for `{extension}`.")
+        if raise_error:
+            raise ValueError(f"No driver found for `{guess.get(extension, ['', extension])[1]}`.")
+    return succes
+
+_ = extension_in_gdal_drivers(".tif")
+_ = extension_in_gdal_drivers(".nc")
+_ = extension_in_gdal_drivers(".shp")
+_ = extension_in_gdal_drivers(".geojson")
+_ = extension_in_gdal_drivers(".gpkg")
 
 def unlink_vsimems(paths):
     if not isinstance(paths, list):
@@ -269,6 +301,7 @@ def translate(
             ...
         return fps
     elif extension != ".tif":
+        _ = extension_in_gdal_drivers(extension, raise_error=True)
         if separate_unscale:
             logging.warning(
                 f"The `separate_unscale` option only works with `.tif` extension, not with `{extension}`."
@@ -617,11 +650,7 @@ def to_vsimem(bb: List[float] = None, coords: List[List[float]] = None) -> str:
 if __name__ == "__main__":
     ...
 
-    region_shape = fh = (
-        r"/Users/hmcoerver/Library/Mobile Documents/com~apple~CloudDocs/GitHub/wapordl/wapordl/test_data/detector_shapes/star.geojson"
-    )
+    from osgeo import gdal
 
-    geom, ftr, layer, ds = get_geom(region_shape)
+    extension = ".nc"
 
-    lyr_idx = 0
-    ftr_idx = 0
