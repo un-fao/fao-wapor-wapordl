@@ -132,7 +132,7 @@ df = wapordl.wapor_ts(region, variable, period, overview)
 fp = wapordl.wapor_map(region, variable, period, folder, extension = ".nc")
 ```
 
-When working with level-3 data, an entire L3 region can be downloaded by specifying a three letter region code:
+An entire L3 region can be downloaded by specifying a three letter region code:
     
 ```python
 region = "BKA"
@@ -143,6 +143,22 @@ overview = 3
 
 df = wapordl.wapor_ts(region, variable, period, overview)
 fp = wapordl.wapor_map(region, variable, period, folder, unit_conversion = "year")
+```
+
+To get an overview of all the available L3 regions, run:
+
+```python
+wapordl.region_selector.l3_codes()
+
+{
+    'ERB': 'Erbil, Iraq',
+    'KAI': 'Kairouan, Tunisia',
+    'BKA': 'Bekaa, Lebanon',
+...
+    'LOU': 'Moulay Bousselham, Morocco',
+    'ZAN': 'Zankalon, Egypt',
+    'MAG': 'Magdalena, Colombia'
+}
 ```
 
 ## Upcoming
