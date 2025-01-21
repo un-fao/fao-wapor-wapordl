@@ -56,7 +56,7 @@ df.attrs
 >>>  'overview': 'AUTO:0'}
 ```
 
-Variable names always consist of three parts defining (1) the `level` (`L1`, `L2`, `L3` or `AGERA5`), (2) the variable (e.g. ` AETI`) and (3) the temporal resolution (`A` for annual, `M` for monthly, `D` for dekadal and `E` for daily). To see which variables are available, check `wapordl.variable_descriptions.WAPOR3_VARS` and `wapordl.variable_descriptions.AGERA5_VARS`, e.g.:
+Variable names always consist of three parts defining; (1) the `level`, which can be one of `L1` (300m, global), `L2` (100m, Africa & Near East), `L3` (20m, regional) or `AGERA5` (0.1°, global); (2) the variable (e.g. ` AETI`) and; (3) the temporal resolution (`A` for annual, `M` for monthly, `D` for dekadal and `E` for daily). To see which variables are available, check `wapordl.variable_descriptions.WAPOR3_VARS` and `wapordl.variable_descriptions.AGERA5_VARS`, e.g.:
 
 ```python
 wapordl.variable_descriptions.WAPOR3_VARS
