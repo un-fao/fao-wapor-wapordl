@@ -1,6 +1,7 @@
 ![pip_downloads](https://img.shields.io/pypi/dw/wapordl?label=pip%7Cdownloads
 ) ![conda_downloads](https://img.shields.io/conda/d/conda-forge/wapordl) [![version](https://img.shields.io/pypi/v/wapordl?label=current%20version
-)](https://anaconda.org/conda-forge/wapordl)
+)](https://anaconda.org/conda-forge/wapordl) ![min_python](https://img.shields.io/badge/python-%E2%89%A53.10-blue
+)
 
 # WaPORDL
 
