@@ -184,6 +184,7 @@ def cog_dl(
         for i, (md, _) in enumerate(urls):
             if not isinstance(md, type(None)):
                 band = warp.GetRasterBand(i + 1)
+                band.SetDescription(md.get("start_date", f"Band {i+1}"))
                 band.SetMetadata(md)
 
     warp.FlushCache()
