@@ -12,7 +12,7 @@ def generate_urls(
     ----------
     variable : str
         Name of the variable.
-    l3_region : _type_, optional
+    l3_region : str | None, optional
         Three letter code specifying the level-3 region, by default None.
     period : list, optional
         Start and end date in between which resource URLs will be searched, by default None.
