@@ -37,7 +37,7 @@ overview = "AUTO" # set to "NONE" to use native resolution data.
 # and check out examples/overviews.ipynb for a longer explanation
 # of what this does.
 
-df = wapordl.wapor_ts(region, variable, period, overview)
+df = wapordl.wapor_ts(region, variable, period, overview=overview)
 
 df
 
@@ -78,7 +78,7 @@ To download a timerseries and convert its unit provide the `unit_conversion` key
 ```python
 unit = "dekad" # or choose "day", "month", "year", "none" (default).
 
-df = wapordl.wapor_ts(region, variable, period, overview = 3, unit_conversion = unit)
+df = wapordl.wapor_ts(region, variable, period, overview=3, unit_conversion=unit)
 
 df
 
@@ -145,7 +145,7 @@ fp
 To save downloaded data in unscaled single-band files (instead of 1 file with multiple bands), set the `separate_unscale` keyword. Note that this will results in larger files.
 
 ```python
-fps = wapordl.wapor_map(region, "L2-AETI-D", period, folder, separate_unscale = True)
+fps = wapordl.wapor_map(region, "L2-AETI-D", period, folder, separate_unscale=True)
 ```
 
 To download a timeseries and a netcdf for a bounding-box:
@@ -157,8 +157,8 @@ variable = "L3-AETI-D"
 period = ["2021-01-01", "2021-07-01"]
 overview = "NONE"
 
-df = wapordl.wapor_ts(region, variable, period, overview)
-fp = wapordl.wapor_map(region, variable, period, folder, extension = ".nc")
+df = wapordl.wapor_ts(region, variable, period, overview=overview)
+fp = wapordl.wapor_map(region, variable, period, folder, extension=".nc")
 ```
 
 An entire L3 region can be downloaded by specifying a three letter region code:
@@ -170,8 +170,8 @@ variable = "L3-T-D"
 period = ["2021-01-01", "2021-07-01"]
 overview = 3
 
-df = wapordl.wapor_ts(region, variable, period, overview)
-fp = wapordl.wapor_map(region, variable, period, folder, unit_conversion = "year")
+df = wapordl.wapor_ts(region, variable, period, overview=overview)
+fp = wapordl.wapor_map(region, variable, period, folder, unit_conversion="year")
 ```
 
 To get an overview of all the available L3 regions, run:
@@ -207,8 +207,8 @@ folder = "path/to/some/output/folder"
 This shapefile has many different attributes, one of them being `"SOV_A3"`. This attribute gives the [ISO 3166 country code](https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes) for each of its polygons. (2) We can create a [SQL Where Clause](https://www.w3schools.com/SQl/sql_where.asp) and pass this to the `gdal.Warp` call that `wapordl` internally makes to only download data for the countries we select (🇹🇿 Tanzania and 🇲🇼 Malawi in this case).
 
 ```python
-country_code = ["TZA", "MWI"]
-warp_kwargs = {"cutlineWhere": f'"SOV_A3" IN (\'{"\',\'".join(country_code)}\')'}
+country_codes = ["TZA", "MWI"]
+warp_kwargs = {"cutlineWhere": f'"SOV_A3" IN (\'{"\',\'".join(country_codes)}\')'}
 
 warp_kwargs
 
