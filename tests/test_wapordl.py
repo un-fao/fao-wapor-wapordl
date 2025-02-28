@@ -212,7 +212,7 @@ def test_general_1():
     region = os.path.join(test_data_folder, "1237500.geojson")
     period = ["2021-01-12", "2021-01-25"]
 
-    df1 = wapor_ts(region, "L2-AETI-D", period, overview)
+    df1 = wapor_ts(region, "L2-AETI-D", period, overview=overview)
     assert np.isclose(df1.iloc[0]["mean"], 0.4296)
     assert df1.iloc[0].start_date == pd.Timestamp("2021-01-11 00:00:00")
     assert df1.attrs == {
@@ -226,7 +226,7 @@ def test_general_2():
     overview = 3
     region = os.path.join(test_data_folder, "1237500.geojson")
     period = ["2021-01-12", "2021-01-25"]
-    df2 = wapor_ts(region, "L2-AETI-M", period, overview)
+    df2 = wapor_ts(region, "L2-AETI-M", period, overview=overview)
     assert df2.attrs["units"] == "mm/month"
 
 
@@ -234,7 +234,7 @@ def test_general_3():
     overview = 3
     region = os.path.join(test_data_folder, "1237500.geojson")
     period = ["2021-01-12", "2021-01-25"]
-    df3 = wapor_ts(region, "L2-AETI-A", period, overview)
+    df3 = wapor_ts(region, "L2-AETI-A", period, overview=overview)
     assert df3.attrs["units"] == "mm/year"
 
 
@@ -246,7 +246,7 @@ def test_general_4(variable):
     overview = 3
     region = os.path.join(test_data_folder, "1237500.geojson")
     period = ["2021-01-12", "2021-01-25"]
-    _ = wapor_ts(region, variable, period, overview)
+    _ = wapor_ts(region, variable, period, overview=overview)
 
 
 variables = [
@@ -545,14 +545,14 @@ def test_from_dekad():
     overview = 3
 
     # FROM DEKAD
-    df_dekad_ref = wapor_ts(region, "L2-AETI-D", periodX, overview)
+    df_dekad_ref = wapor_ts(region, "L2-AETI-D", periodX, overview=overview)
     df_dekad_day = wapor_ts(
-        region, "L2-AETI-D", periodX, overview, unit_conversion="day"
+        region, "L2-AETI-D", periodX, overview=overview, unit_conversion="day"
     )
     assert df_dekad_day.attrs["units"] == "mm/day"
     assert np.all(df_dekad_ref["mean"] == df_dekad_day["mean"])
     df_dekad_dekad = wapor_ts(
-        region, "L2-AETI-D", periodX, overview, unit_conversion="dekad"
+        region, "L2-AETI-D", periodX, overview=overview, unit_conversion="dekad"
     )
     assert np.all(
         np.isclose(
@@ -564,14 +564,14 @@ def test_from_dekad():
     )
     assert df_dekad_dekad.attrs["units"] == "mm/dekad"
     df_dekad_month = wapor_ts(
-        region, "L2-AETI-D", periodX, overview, unit_conversion="month"
+        region, "L2-AETI-D", periodX, overview=overview, unit_conversion="month"
     )
     assert np.all(
         np.isclose(df_dekad_ref["mean"] * 31, df_dekad_month["mean"], atol=0, rtol=1e-3)
     )
     assert df_dekad_month.attrs["units"] == "mm/month"
     df_dekad_year = wapor_ts(
-        region, "L2-AETI-D", periodX, overview, unit_conversion="year"
+        region, "L2-AETI-D", periodX, overview=overview, unit_conversion="year"
     )
     assert np.all(
         np.isclose(df_dekad_ref["mean"] * 365, df_dekad_year["mean"], atol=0, rtol=1e-3)
@@ -584,28 +584,28 @@ def test_from_month():
     periodX = ["2021-01-01", "2021-01-31"]
     overview = 3
 
-    df_month_ref = wapor_ts(region, "L2-AETI-M", periodX, overview)
+    df_month_ref = wapor_ts(region, "L2-AETI-M", periodX, overview=overview)
     df_month_day = wapor_ts(
-        region, "L2-AETI-M", periodX, overview, unit_conversion="day"
+        region, "L2-AETI-M", periodX, overview=overview, unit_conversion="day"
     )
     assert df_month_day.attrs["units"] == "mm/day"
     assert np.all(
         np.isclose(df_month_ref["mean"] / 31, df_month_day["mean"], atol=0, rtol=1e-2)
     )
     df_month_dekad = wapor_ts(
-        region, "L2-AETI-M", periodX, overview, unit_conversion="dekad"
+        region, "L2-AETI-M", periodX, overview=overview, unit_conversion="dekad"
     )
     assert np.all(
         np.isclose(df_month_ref["mean"] / 3, df_month_dekad["mean"], atol=0, rtol=1e-2)
     )
     assert df_month_dekad.attrs["units"] == "mm/dekad"
     df_month_month = wapor_ts(
-        region, "L2-AETI-M", periodX, overview, unit_conversion="month"
+        region, "L2-AETI-M", periodX, overview=overview, unit_conversion="month"
     )
     assert np.all(df_month_ref["mean"] == df_month_month["mean"])
     assert df_month_month.attrs["units"] == "mm/month"
     df_month_year = wapor_ts(
-        region, "L2-AETI-M", periodX, overview, unit_conversion="year"
+        region, "L2-AETI-M", periodX, overview=overview, unit_conversion="year"
     )
     assert np.all(
         np.isclose(df_month_ref["mean"] * 12, df_month_year["mean"], atol=0, rtol=1e-3)
@@ -618,30 +618,30 @@ def test_from_year():
     periodX = ["2021-01-01", "2021-01-31"]
     overview = 3
 
-    df_year_ref = wapor_ts(region, "L2-AETI-A", periodX, overview)
+    df_year_ref = wapor_ts(region, "L2-AETI-A", periodX, overview=overview)
     df_year_day = wapor_ts(
-        region, "L2-AETI-A", periodX, overview, unit_conversion="day"
+        region, "L2-AETI-A", periodX, overview=overview, unit_conversion="day"
     )
     assert df_year_day.attrs["units"] == "mm/day"
     assert np.all(
         np.isclose(df_year_ref["mean"] / 365, df_year_day["mean"], atol=0, rtol=1e-2)
     )
     df_year_dekad = wapor_ts(
-        region, "L2-AETI-A", periodX, overview, unit_conversion="dekad"
+        region, "L2-AETI-A", periodX, overview=overview, unit_conversion="dekad"
     )
     assert np.all(
         np.isclose(df_year_ref["mean"] / 36, df_year_dekad["mean"], atol=0, rtol=1e-2)
     )
     assert df_year_dekad.attrs["units"] == "mm/dekad"
     df_year_month = wapor_ts(
-        region, "L2-AETI-A", periodX, overview, unit_conversion="month"
+        region, "L2-AETI-A", periodX, overview=overview, unit_conversion="month"
     )
     assert np.all(
         np.isclose(df_year_ref["mean"] / 12, df_year_month["mean"], atol=0, rtol=1e-3)
     )
     assert df_year_month.attrs["units"] == "mm/month"
     df_year_year = wapor_ts(
-        region, "L2-AETI-A", periodX, overview, unit_conversion="year"
+        region, "L2-AETI-A", periodX, overview=overview, unit_conversion="year"
     )
     assert np.all(df_year_ref["mean"] == df_year_year["mean"])
     assert df_year_year.attrs["units"] == "mm/year"
@@ -652,13 +652,13 @@ def test_unit_conversion_1():
     periodX = ["2021-01-01", "2021-01-31"]
     overview = 3
 
-    _ = wapor_ts(region, "L1-T-D", periodX, overview, unit_conversion="dekad")
+    _ = wapor_ts(region, "L1-T-D", periodX, overview=overview, unit_conversion="dekad")
     df_npp_dekad_per_dekad = wapor_ts(
-        region, "L1-NPP-D", periodX, overview, unit_conversion="dekad"
+        region, "L1-NPP-D", periodX, overview=overview, unit_conversion="dekad"
     )
     assert np.all(df_npp_dekad_per_dekad["minimum"]) >= 0
     df_rsm_dekad_per_dekad = wapor_ts(
-        region, "L1-RSM-D", periodX, overview, unit_conversion="dekad"
+        region, "L1-RSM-D", periodX, overview=overview, unit_conversion="dekad"
     )
     assert np.all(df_rsm_dekad_per_dekad["minimum"]) >= 0.0
     assert np.all(df_rsm_dekad_per_dekad["maximum"]) <= 1.0

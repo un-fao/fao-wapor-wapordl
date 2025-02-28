@@ -10,6 +10,8 @@
 *__pycache__
 *.pytest_cache
 
+.coverage
+
 # Compiled Python bytecode
 *.py[cod]
 
