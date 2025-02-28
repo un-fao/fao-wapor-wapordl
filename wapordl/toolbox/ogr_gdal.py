@@ -602,7 +602,7 @@ def wkt_polygon_to_coords(wkt: str) -> List[List[float]]:
     wkt_type = wkt.split(" ")[0]
     if wkt_type != "POLYGON":
         raise ValueError(
-            "Only wkt with geometry type `POLYGON` supported, not `{wkt_type}`."
+            f"Only wkt with geometry type `POLYGON` supported, not `{wkt_type}`."
         )
     coords_ = wkt.replace("POLYGON ((", "").replace("))", "").split(",")
     coords = [[float(y) for y in x.split(" ")] for x in coords_]
@@ -662,10 +662,9 @@ def zone_stats(raster, vector, identifier, id_value):
         cutlineDSName=vector,
         cutlineWhere=f"\"{identifier}\"='{id_value}'",
         cropToCutline=True,
+        # creationOptions=["COMPRESS=LZW"],
     )
-    output_file = (
-        f"/vsimem/x_{time.strftime('%Y-%m-%d_%H%M%S')}_{np.random.randint(9999)}.tif"
-    )
+    output_file = f"/vsimem/x_{time.strftime('%Y-%m-%d_%H%M%S')}_{np.random.randint(9999)}.tif"
     ds: gdal.Dataset = gdal.Warp(output_file, raster, options=warp_options)
 
     # Get statistics for the clipped dataset.
@@ -730,8 +729,9 @@ def zonal_stats(
     # Merge everything.
     data: pd.DataFrame = (
         pd.concat(data_parts)
-        .reset_index(drop=True)
+        .dropna()
         .sort_values([identifier, "start_date"])
+        .reset_index(drop=True)
     )
 
     # Add metadata to pd.DataFrame.

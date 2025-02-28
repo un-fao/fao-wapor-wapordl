@@ -24,6 +24,7 @@ def wapor_dl(
     filename: str | None = None,
     max_error: float = 0.5,
     make_plots: bool | str = False,
+    warp_kwargs: dict = {},
 ) -> Union[str, pd.DataFrame]:
     """Download a WaPOR or agERA5 variable for a specified region and period.
 
@@ -54,6 +55,8 @@ def wapor_dl(
         Only used when `overview` is set to `"AUTO"`, create graphs showing the iteration process
         executed to determine the optimal overview. When a existing folder is defined, the graphs
         are saved into that folder as png files, by default False.
+    warp_kwargs : dict, optional
+        Additional gdal.Warp keyword arguments used when downloading data, by default {}.
 
     Returns
     -------
@@ -101,7 +104,10 @@ def wapor_dl(
             )  # list(region_shape.bounds)
     # GEOJSON
     elif isinstance(region, str):
-        if not os.path.isfile(region):
+        if "/vsicurl/" in region:
+            region_code = "online_resource"
+            region_shape = region
+        elif not os.path.isfile(region):
             raise ValueError("Geojson file not found.")  # NOTE: TESTED
         else:
             region_code = os.path.split(region)[-1].replace(".geojson", "")
@@ -187,6 +193,7 @@ def wapor_dl(
     warp_kwargs = {
         "xRes": abs(xres) * 2 ** (overview_ + 1),
         "yRes": abs(yres) * 2 ** (overview_ + 1),
+        **warp_kwargs,
     }
     # BB | L3-code + L1/L2-variable (output = EPSG:4326)
     if isinstance(region, list):
@@ -265,6 +272,7 @@ def wapor_map(
     filename: str | None = None,
     max_error: float = 0.5,
     make_plots: bool | str = False,
+    warp_kwargs: dict = {},
 ) -> str:
     """Download a map of a WaPOR3 or agERA5 variable for a specified region and period.
 
@@ -299,6 +307,8 @@ def wapor_map(
         Only used when `overview` is set to `"AUTO"`, create graphs showing the iteration process
         executed to determine the optimal overview. When a existing folder is defined, the graphs
         are saved into that folder as png files, by default False.
+    warp_kwargs : dict, optional
+        Additional gdal.Warp keyword arguments used when downloading data, by default {}.
 
     Returns
     -------
@@ -327,6 +337,7 @@ def wapor_map(
         filename=filename,
         make_plots=make_plots,
         max_error=max_error,
+        warp_kwargs=warp_kwargs,
     )
 
     fp = ogr_gdal.translate(fp, extension, separate_unscale=separate_unscale)
@@ -345,6 +356,7 @@ def wapor_ts(
     unit_conversion: str = "none",
     max_error: float = 0.5,
     make_plots: bool | str = False,
+    warp_kwargs: dict = {},
 ) -> pd.DataFrame:
     """Download a timeseries of a WaPOR3 or agERA5 variable for a specified region and period.
 
@@ -370,6 +382,8 @@ def wapor_ts(
         Only used when `overview` is set to `"AUTO"`, create graphs showing the iteration process
         executed to determine the optimal overview. When a existing folder is defined, the graphs
         are saved into that folder as png files, by default False.
+    warp_kwargs : dict, optional
+        Additional gdal.Warp keyword arguments used when downloading data, by default {}.
 
     Returns
     -------
@@ -393,6 +407,7 @@ def wapor_ts(
         folder=None,
         max_error=max_error,
         make_plots=make_plots,
+        warp_kwargs=warp_kwargs,
     )
 
     if all([isinstance(region, str), len(region) == 3]) or isinstance(region, list):
@@ -412,4 +427,3 @@ def wapor_ts(
 
 if __name__ == "__main__":
     ...
-
