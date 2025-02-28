@@ -99,7 +99,7 @@ df.attrs
 >>> 'original_units': 'mm/day'}
 ```
 
-By default `wapordl.wapor_ts` gives a single timeseries for the entire area covered by the passed region, even if the region contains multiple polygons. By specifying the `identifier` keyword, multiple timeseries will be returned, based on the values of column selected through `identifier`. In the example below, the geojson file contains 6 polygons and for each of them a `"name"`-attribute is specified.
+By default `wapordl.wapor_ts` gives a single timeseries for the entire area covered by the passed region, even if the region contains multiple polygons. By specifying the `identifier` keyword, multiple timeseries will be returned, based on the values of a column selected through `identifier`. In the example below, the geojson file contains 6 polygons and for each of them a `"name"`-attribute is specified.
 
 ```python
 region = "test_data/polygons_with_name.geojson"
@@ -192,7 +192,7 @@ wapordl.region_selector.l3_codes()
 
 ## Advanced
 
-Finally an advanced example, showing how you can quickly get timeseries for a WaPOR variable for selected countries. There are three techniques applied here that are worth mentioning. (1) First of all, its possible to use [GDAL Virtual File Systems](https://gdal.org/en/stable/user/virtual_file_systems.html#gdal-virtual-file-systems-compressed-network-hosted-etc-vsimem-vsizip-vsitar-vsicurl) when passing a `region`. Here we'll use two of them to open a zipped and hosted shapefile containing country boundaries.
+Finally an advanced example, showing how you can quickly get timeseries for a WaPOR variable for selected countries. There are three techniques applied here that are worth mentioning. (1) First of all, its possible to use [GDAL Virtual File Systems](https://gdal.org/en/stable/user/virtual_file_systems.html#gdal-virtual-file-systems-compressed-network-hosted-etc-vsimem-vsizip-vsitar-vsicurl) when passing a `region`. Here we'll use two of them to open a [zipped and hosted shapefile](https://naturalearth.s3.amazonaws.com/110m_cultural/ne_110m_admin_0_countries.zip) containing country boundaries.
 
 ```python
 zip_url = "https://naturalearth.s3.amazonaws.com/110m_cultural/ne_110m_admin_0_countries.zip"
