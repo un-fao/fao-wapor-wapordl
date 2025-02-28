@@ -204,7 +204,7 @@ period = ["2018-01-01", "2024-01-01"]
 folder = "path/to/some/output/folder"
 ```
 
-This shapefile has many different attributes, one of them being `"SOV_A3"`. This attribute gives the [ISO 3166 country code](https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes) for each of its polygons. (2) We can create a [SQL Where Clause](https://www.w3schools.com/SQl/sql_where.asp) and pass this to the `gdal.Warp` call that `wapordl` internally makes to only download data for the countries we select (🇹🇿 Tanzania and 🇲🇼 Malawi in this case).
+This shapefile has many different attributes, one of them being `"SOV_A3"`. This attribute gives the [ISO 3166 country code](https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes) for each of its polygons. (2) We can create a [SQL Where Clause](https://www.w3schools.com/SQl/sql_where.asp) and pass this to the [`gdal.Warp` call](https://gdal.org/en/stable/programs/gdalwarp.html#cmdoption-gdalwarp-cwhere) that `wapordl` internally makes to only download data for the countries we select (🇹🇿 Tanzania and 🇲🇼 Malawi in this case).
 
 ```python
 country_codes = ["TZA", "MWI"]
