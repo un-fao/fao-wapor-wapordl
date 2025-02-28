@@ -2,6 +2,7 @@ import importlib.util
 import logging
 import os
 import time
+from itertools import repeat
 from typing import List, Tuple
 
 import numpy as np
@@ -184,7 +185,7 @@ def cog_dl(
         for i, (md, _) in enumerate(urls):
             if not isinstance(md, type(None)):
                 band = warp.GetRasterBand(i + 1)
-                band.SetDescription(md.get("start_date", f"Band {i+1}"))
+                band.SetDescription(md.get("start_date", f"Band {i + 1}"))
                 band.SetMetadata(md)
 
     warp.FlushCache()
@@ -205,9 +206,7 @@ def cog_dl(
 
 
 def get_stats(
-    path: str,
-    metadata: dict,
-    req_stats: List[str] = ["minimum", "maximum", "mean"],
+    path: str
 ) -> pd.DataFrame:
     """Get statistics for a raster file.
 
@@ -215,18 +214,19 @@ def get_stats(
     ----------
     path : str
         Path to raster file.
-    metadata : dict
-        Metadata to be set on the output.
-    req_stats : List[str], optional
-        Which statistics to include, by default ["minimum", "maximum", "mean"].
 
     Returns
     -------
     pd.DataFrame
         The calculated statistics.
     """
-    stats = gdal.Info(path, format="json", stats=True)
-
+    try:
+        stats = gdal.Info(path, format="json", stats=True)
+    except RuntimeError as e:
+        if "Failed to compute statistics, no valid pixels found in sampling." in str(e):
+            stats = gdal.Info(path, format="json", stats=False)
+        else:
+            raise e
     ## Get scale and offset factor.
     scale = stats["bands"][0].get("scale", 1)
     offset = stats["bands"][0].get("offset", 0)
@@ -237,9 +237,9 @@ def get_stats(
 
     data = {
         statistic: [x.get(statistic, np.nan) for x in stats["bands"]]
-        for statistic in req_stats
+        for statistic in ["minimum", "maximum", "mean"]
     }
-    data = pd.DataFrame(data) * scale
+    data: pd.DataFrame = pd.DataFrame(data) * scale
     data["start_date"] = [
         pd.Timestamp(x.get("metadata", {}).get("", {}).get("start_date", "nat"))
         for x in stats["bands"]
@@ -255,12 +255,8 @@ def get_stats(
         )
         for x in stats["bands"]
     ]
-    out_md = {
-        k: v
-        for k, v in metadata.items()
-        if k in ["long_name", "units", "overview", "original_units"]
-    }
-    data.attrs = out_md
+
+    data.attrs = make_df_md(path)
     return data
 
 
@@ -654,6 +650,110 @@ def to_vsimem(bb: List[float] = None, coords: List[List[float]] = None) -> str:
 
     return fh
 
+
+#################
+## ZONAL STATS ##
+#################
+
+
+def zone_stats(raster, vector, identifier, id_value):
+    # Clip raster to the geometry.
+    warp_options = gdal.WarpOptions(
+        cutlineDSName=vector,
+        cutlineWhere=f"\"{identifier}\"='{id_value}'",
+        cropToCutline=True,
+    )
+    output_file = (
+        f"/vsimem/x_{time.strftime('%Y-%m-%d_%H%M%S')}_{np.random.randint(9999)}.tif"
+    )
+    ds: gdal.Dataset = gdal.Warp(output_file, raster, options=warp_options)
+
+    # Get statistics for the clipped dataset.
+    data = get_stats(ds)
+    data[identifier] = id_value
+
+    # Unlink.
+    unlink_vsimems(output_file)
+
+    return data
+
+
+def zonal_stats(
+    raster: str | gdal.Dataset,
+    vector: str,
+    identifier: str,
+):
+    # Open the vector
+    vector_ds: gdal.Dataset = gdal.OpenEx(vector, gdal.OF_VECTOR)
+
+    # Check the number of layers.
+    n_layers = vector_ds.GetLayerCount()
+    if n_layers > 1:
+        logging.warning(
+            f"`{vector_ds}` has {n_layers} layers, only the first layer will be processed."
+        )
+
+    # Open the first layer.
+    layer: ogr.Layer = vector_ds.GetLayer(0)
+
+    # Check the geometry type.
+    layer_def: ogr.FeatureDefn = layer.GetLayerDefn()
+    geom_type = ogr.GeometryTypeToName(layer_def.GetGeomType())
+    req_geom_type = ["Polygon", "Multi Polygon"]
+    if geom_type not in req_geom_type:
+        raise NotImplementedError(
+            f"`zonal_stats` for geometry type `{geom_type}` has not been implemented. Use one of `{req_geom_type}`."
+        )
+
+    # Determine the field names.
+    field_names = [
+        getattr(layer_def.GetFieldDefn(x), "name")
+        for x in range(layer_def.GetFieldCount())
+    ]
+
+    # Check if chosen ID is valid.
+    if identifier not in field_names:
+        raise ValueError(
+            f"Identifier `{identifier}` not found in field names `{field_names}`."
+        )
+
+    # Determine ID values over which to loop.
+    id_values = set([feature.GetField(identifier) for feature in layer])
+    id_values.discard(None)  # NOTE: features without a ID value are skipped.
+
+    # Calculate stats per ID value.
+    # TODO: make this parallel.
+    data_parts = map(
+        zone_stats, repeat(raster), repeat(vector), repeat(identifier), id_values
+    )
+
+    # Merge everything.
+    data: pd.DataFrame = (
+        pd.concat(data_parts)
+        .reset_index(drop=True)
+        .sort_values([identifier, "start_date"])
+    )
+
+    # Add metadata to pd.DataFrame.
+    data.attrs = make_df_md(raster)
+
+    return data
+
+
+def make_df_md(raster, include = ["long_name", "units", "overview", "original_units"]):
+    info = gdal.Info(raster, format="json")
+    try:
+        md: dict = info["bands"][0]["metadata"][""]
+        assert isinstance(md, dict)
+    except (KeyError, IndexError, AssertionError):
+        logging.warning("No valid metadata found.")
+        md = {}
+    df_md = {
+        k: v
+        for k, v in md.items()
+        if k in include
+    }
+    return df_md
 
 if __name__ == "__main__":
     ...

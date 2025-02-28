@@ -84,30 +84,6 @@ def test_8():
     assert "Invalid period." in str(e.value)
 
 
-def test_9():
-    overview = 3
-    region = os.path.join(test_data_folder, "1237500.geojson")
-    with pytest.raises(ValueError) as e:
-        _ = wapordl.wapor_ts(
-            region, "L1-AETI-A", ["2021-01-15", "2021-01-01"], overview, req_stats=None
-        )
-    assert "Please specify a list of required statistics." in str(e.value)
-
-
-def test_10():
-    overview = 3
-    region = os.path.join(test_data_folder, "1237500.geojson")
-    with pytest.raises(ValueError) as e:
-        _ = wapordl.wapor_ts(
-            region,
-            "L1-AETI-A",
-            ["2021-01-15", "2021-01-01"],
-            overview,
-            req_stats=["std"],
-        )
-    assert "Please select at least one valid statistic from" in str(e.value)
-
-
 def test_11():
     overview = 3
     nodata_period = ["2015-01-01", "2016-01-01"]

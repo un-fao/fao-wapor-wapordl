@@ -20,7 +20,6 @@ def wapor_dl(
     period: List[str] = ["2021-01-01", "2022-01-01"],
     overview: str | int = "NONE",
     unit_conversion: str = "none",
-    req_stats: List[str] = ["minimum", "maximum", "mean"],
     folder: str | None = None,
     filename: str | None = None,
     max_error: float = 0.5,
@@ -44,9 +43,6 @@ def wapor_dl(
     unit_conversion : str, optional
         Apply a unit conversion on the created file, can be one of "none", "day", "dekad",
         "month" or "year", by default "none".
-    req_stats : list, optional
-        When set to `None` the function returns a path to a created file, otherwise
-        it return a pd.Dataframe with the requested statistics, by default ["minimum", "maximum", "mean"].
     folder : str, optional
         Path to a folder in which to save any (intermediate) files. If set to `None`, everything will be
         kept in memory, by default None.
@@ -177,6 +173,7 @@ def wapor_dl(
             overview = determine_overview(
                 md_urls[0][1], region, max_error=max_error, make_plots=make_plots
             )
+            md_urls = [({**md, **{"overview": f"AUTO:{overview}"}}, url) for md, url in md_urls]
             logging.info(f"Using overview `{overview}`.")
         else:
             raise ValueError
@@ -247,21 +244,13 @@ def wapor_dl(
         warp_kwargs=warp_kwargs,
         unit_conversion=unit_conversion,
     )
-    vsimems.append(warp_fn)
+    # vsimems.append(warp_fn)
     vsimems.append(vrt_fn)
-
-    ## Collect the stats into a pd.Dataframe if necessary.
-    if not isinstance(req_stats, type(None)):
-        data = ogr_gdal.get_stats(warp_fn, md_urls[0][0], req_stats=req_stats)
-        if data.attrs.get("overview", "") in ["auto", "AUTO"]:
-            data.attrs["overview"] = f"AUTO:{overview}"
-    else:
-        data = warp_fn
 
     ## Unlink memory files.
     ogr_gdal.unlink_vsimems(vsimems)
 
-    return data
+    return warp_fn
 
 
 def wapor_map(
@@ -335,13 +324,14 @@ def wapor_map(
         period=period,
         overview=overview,
         unit_conversion=unit_conversion,
-        req_stats=None,
         filename=filename,
         make_plots=make_plots,
         max_error=max_error,
     )
 
     fp = ogr_gdal.translate(fp, extension, separate_unscale=separate_unscale)
+
+    ogr_gdal.unlink_vsimems(fp)
 
     return fp
 
@@ -350,9 +340,9 @@ def wapor_ts(
     region: Union[str, List[float], None],
     variable: str,
     period: List[str],
+    identifier: str | None = None,
     overview: str | int = "NONE",
     unit_conversion: str = "none",
-    req_stats: List[str] = ["minimum", "maximum", "mean"],
     max_error: float = 0.5,
     make_plots: bool | str = False,
 ) -> pd.DataFrame:
@@ -374,8 +364,6 @@ def wapor_ts(
     unit_conversion : str, optional
         Apply a unit conversion on the created file, can be one of "none", "day", "dekad",
         "month" or "year", by default "none".
-    req_stats : list, optional
-        Specify which statistics to include in the output, by default ["minimum", "maximum", "mean"].
     max_error : float, optional
         Only used when `overview` is set to `"AUTO"`, sets the error threshold, by default 0.5.
     make_plots : bool | str, optional
@@ -395,51 +383,33 @@ def wapor_ts(
             f"Please select one of {valid_units} instead of {unit_conversion}."
         )  # NOTE: TESTED
 
-    ## Check if valid statistics have been selected.
-    if not isinstance(req_stats, list):
-        raise ValueError(
-            "Please specify a list of required statistics."
-        )  # NOTE: TESTED
-    valid_stats = np.isin(req_stats, ["minimum", "maximum", "mean"])
-    req_stats = np.array(req_stats)[valid_stats].tolist()
-    if len(req_stats) == 0:
-        raise ValueError(
-            f"Please select at least one valid statistic from {valid_stats}."
-        )  # NOTE: TESTED
-    if False in valid_stats:
-        logging.warning(
-            f"Invalid statistics detected, continuing with `{', '.join(req_stats)}`."
-        )
-
     ## Call wapor_dl to create a timeseries.
-    df = wapor_dl(
+    fp = wapor_dl(
         region,
         variable,
         period=period,
         overview=overview,
-        req_stats=req_stats,
         unit_conversion=unit_conversion,
         folder=None,
         max_error=max_error,
         make_plots=make_plots,
     )
 
+    if all([isinstance(region, str), len(region) == 3]) or isinstance(region, list):
+        if identifier is not None:
+            logging.warning("Using an identifier is only supported when using a vector as `region`, setting `identifier` to `None`.")
+            identifier = None
+
+    if identifier is None:
+        df = ogr_gdal.get_stats(fp)
+    else:
+        df = ogr_gdal.zonal_stats(fp, region, identifier)
+
+    ogr_gdal.unlink_vsimems(fp)
+
     return df
 
 
 if __name__ == "__main__":
     ...
-    # variable = "L3-T-A"
-    # folder = r"/Users/hmcoerver/Local/testX"
-    # period = ["2021-01-01", "2021-01-31"]
-    # overview = "NONE"
-    # # region = '/Users/hmcoerver/Library/Mobile Documents/com~apple~CloudDocs/GitHub/wapordl/wapordl/test_data/1237500.geojson'
-    # # region1 = [9.2153, 12.1095, 9.8517, 12.6154] # 3x3 pixels
-    # # region2= [9.4231, 12.2881,9.6619, 12.4505] # 1x1 pixels
 
-    # # x = l3_codes()
-    # # region1 = "/Users/hmcoerver/Desktop/IrrigationScheme.geojson"
-    # region1 = "KWL"
-
-    # x1 = wapor_map(region1, variable, period, folder)
-    # x2 = wapor_map(region2, variable, period, os.path.join(folder, "1x1"), overview = overview)

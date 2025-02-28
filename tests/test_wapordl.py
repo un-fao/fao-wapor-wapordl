@@ -218,7 +218,7 @@ def test_general_1():
     assert df1.attrs == {
         "long_name": "Actual EvapoTranspiration and Interception",
         "units": "mm/day",
-        "overview": overview,
+        "overview": str(overview),
     }
 
 
