@@ -1,7 +1,7 @@
 ![pip_downloads](https://img.shields.io/pypi/dw/wapordl?label=pip%7Cdownloads
 ) ![conda_downloads](https://img.shields.io/conda/d/conda-forge/wapordl) [![version](https://img.shields.io/pypi/v/wapordl?label=current%20version
 )](https://anaconda.org/conda-forge/wapordl) ![min_python](https://img.shields.io/badge/python-%E2%89%A53.10-blue
-)
+) ![coverage](https://bitbucket.org/cioapps/wapordl/raw/main/tests/coverage/coverage.svg)
 
 # WaPORDL
 
@@ -99,6 +99,34 @@ df.attrs
 >>> 'original_units': 'mm/day'}
 ```
 
+By default `wapordl.wapor_ts` gives a single timeseries for the entire area covered by the passed region, even if the region contains multiple polygons. By specifying the `identifier` keyword, multiple timeseries will be returned, based on the values of column selected through `identifier`. In the example below, the geojson file contains 6 polygons and for each of them a `"name"`-attribute is specified.
+
+```python
+region = "test_data/polygons_with_name.geojson"
+variable = "L2-AETI-D"
+period = ["2021-01-01", "2021-07-01"]
+identifier = "name"
+
+df = wapordl.wapor_ts(region, variable, period, identifier=identifier)
+
+df
+
+>>>     minimum  maximum    mean start_date   end_date number_of_days   name
+>>> 0       0.5      7.1  3.0812 2021-01-01 2021-01-10        10 days   corn
+>>> 1       0.4      6.3  3.2941 2021-01-11 2021-01-20        10 days   corn
+>>> 2       0.5      6.6  3.4782 2021-01-21 2021-01-31        11 days   corn
+>>> ...
+>>> 92      0.0      0.2  0.0981 2021-06-11 2021-06-20        10 days  wheat
+>>> 93      0.0      0.4  0.1277 2021-06-21 2021-06-30        10 days  wheat
+>>> 94      0.1      0.6  0.2325 2021-07-01 2021-07-10        10 days  wheat
+
+df.attrs
+
+>>> {'long_name': 'Actual EvapoTranspiration and Interception',
+>>>  'overview': 'NONE',
+>>> 'units': 'mm/day'}
+```
+
 To download a geotiff for a certain region and period of time:
 
 ```python
@@ -162,8 +190,54 @@ wapordl.region_selector.l3_codes()
 >>> }
 ```
 
+## Advanced
+
+Finally an advanced example, showing how you can quickly get timeseries for a WaPOR variable for selected countries. There are three techniques applied here that are worth mentioning. (1) First of all, its possible to use [GDAL Virtual File Systems](https://gdal.org/en/stable/user/virtual_file_systems.html#gdal-virtual-file-systems-compressed-network-hosted-etc-vsimem-vsizip-vsitar-vsicurl) when passing a `region`. Here we'll use two of them to open a zipped and hosted shapefile containing country boundaries.
+
+```python
+zip_url = "https://naturalearth.s3.amazonaws.com/110m_cultural/ne_110m_admin_0_countries.zip"
+file_path = "ne_110m_admin_0_countries.shp"
+region = f"/vsizip//vsicurl/{zip_url}/{file_path}"
+
+variable = "L1-AETI-A"
+period = ["2018-01-01", "2024-01-01"]
+folder = "path/to/some/output/folder"
+```
+
+This shapefile has many different attributes, one of them being `"SOV_A3"`. This attribute gives the [ISO 3166 country code](https://en.wikipedia.org/wiki/List_of_ISO_3166_country_codes) for each of its polygons. (2) We can create a [SQL Where Clause](https://www.w3schools.com/SQl/sql_where.asp) and pass this to the `gdal.Warp` call that `wapordl` internally makes to only download data for the countries we select (🇹🇿 Tanzania and 🇲🇼 Malawi in this case).
+
+```python
+country_code = ["TZA", "MWI"]
+warp_kwargs = {"cutlineWhere": f'"SOV_A3" IN (\'{"\',\'".join(country_code)}\')'}
+
+warp_kwargs
+
+>>> {'cutlineWhere': '"SOV_A3" IN (\'TZA\',\'MWI\')'}
+```
+
+(3) Finally, we can run `wapordl.wapor_ts` to get timeseries for each country, by specifying the `identifier` keyword to split the timeseries based on the values of the `"SOV_A3"` attribute.
+
+```python
+df = wapordl.wapor_ts(region, variable, period, identifier="SOV_A3", 
+                        overview=2, warp_kwargs=warp_kwargs)
+
+df
+
+>>>     minimum  maximum       mean start_date   end_date number_of_days SOV_A3
+>>> 0     228.3   1533.6   828.6966 2018-01-01 2018-12-31       365 days    MWI
+>>> 1     242.9   1489.8   845.3606 2019-01-01 2019-12-31       365 days    MWI
+>>> 2     236.5   1510.8   845.3158 2020-01-01 2020-12-31       366 days    MWI
+>>> ...
+>>> 11     90.0   1816.7   902.9670 2022-01-01 2022-12-31       365 days    TZA
+>>> 12    110.7   1745.7   933.4514 2023-01-01 2023-12-31       365 days    TZA
+>>> 13    114.7   1660.6  1002.2931 2024-01-01 2024-12-31       366 days    TZA
+```
+
+
 ## Upcoming
 
+- ~~Use online vector files through the `/vsicurl/` [GDAL Virtual File System](https://gdal.org/en/stable/user/virtual_file_systems.html#gdal-virtual-file-systems-compressed-network-hosted-etc-vsimem-vsizip-vsitar-vsicurl)~~ ✅
+- ~~Timeseries per polygon, by specifying the `identifier` keyword.~~ ✅
 - ~~Automatic overview selection based on the size and shape of the region.~~ ✅
 - ~~Docstrings for all functions.~~ ✅
 - ~~Option to split multiband GeoTIFF into single band files.~~ ✅
