@@ -33,11 +33,8 @@ import wapordl
 region = "test_data/test_MUV.geojson"
 variable = "L2-AETI-D"
 period = ["2021-01-01", "2021-07-01"]
-overview = "AUTO" # set to "NONE" to use native resolution data.
-# and check out examples/overviews.ipynb for a longer explanation
-# of what this does.
 
-df = wapordl.wapor_ts(region, variable, period, overview=overview)
+df = wapordl.wapor_ts(region, variable, period)
 
 df
 
@@ -54,7 +51,7 @@ df.attrs
 
 >>> {'long_name': 'Actual EvapoTranspiration and Interception',
 >>>  'units': 'mm/day',
->>>  'overview': 'AUTO:0'}
+>>>  'overview': 'NONE'}
 ```
 
 Variable names always consist of three parts defining; (1) the `level`, which can be one of `L1` (300m, global), `L2` (100m, Africa & Near East), `L3` (20m, regional) or `AGERA5` (0.1°, global); (2) the variable (e.g. ` AETI`) and; (3) the temporal resolution (`A` for annual, `M` for monthly, `D` for dekadal and `E` for daily). To see which variables are available, check `wapordl.variable_descriptions.WAPOR3_VARS` and `wapordl.variable_descriptions.AGERA5_VARS`, e.g.:
@@ -155,7 +152,9 @@ region = [35.75, 33.70, 35.82, 33.75] # [xmin, ymin, xmax, ymax]
 folder = "path/to/some/output/folder"
 variable = "L3-AETI-D"
 period = ["2021-01-01", "2021-07-01"]
-overview = "NONE"
+overview = "NONE" # set to "NONE" (default) to use native resolution data.
+# and check out examples/overviews.ipynb for a longer explanation
+# of what this does.
 
 df = wapordl.wapor_ts(region, variable, period, overview=overview)
 fp = wapordl.wapor_map(region, variable, period, folder, extension=".nc")
