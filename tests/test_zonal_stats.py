@@ -37,6 +37,10 @@ def test_main1():
     assert identifier in list(df1.columns)
     assert np.isfinite(df1["mean"].dropna().mean())
     assert overview in df1.attrs["overview"]
+    df2 = wapordl.wapor_ts(
+        region, variable, period, identifier=identifier, overview=overview, n_threads=5
+    )
+    assert df1.equals(df2)
 
 
 def test_main2():
@@ -54,6 +58,10 @@ def test_main2():
     assert np.isfinite(df2["mean"].dropna().mean())
     assert overview in df2.attrs["overview"]
     assert not any(df2["start_date"].isnull())
+    df3 = wapordl.wapor_ts(
+        region, variable, period, identifier=identifier, overview=overview, n_threads=5
+    )
+    assert df2.equals(df3)
 
 
 def test_main3():
@@ -68,6 +76,10 @@ def test_main3():
     )
     assert df3.columns.size == 6
     assert overview in df3.attrs["overview"]
+    df4 = wapordl.wapor_ts(
+        region, variable, period, identifier=identifier, overview=overview, n_threads=5
+    )
+    assert df4.equals(df3)
 
 
 def test_main4():

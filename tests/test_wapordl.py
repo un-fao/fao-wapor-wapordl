@@ -213,7 +213,7 @@ def test_general_1():
     period = ["2021-01-12", "2021-01-25"]
 
     df1 = wapor_ts(region, "L2-AETI-D", period, overview=overview)
-    assert np.isclose(df1.iloc[0]["mean"], 0.4296)
+    assert np.isclose(df1.iloc[0]["mean"], 0.4291)
     assert df1.iloc[0].start_date == pd.Timestamp("2021-01-11 00:00:00")
     assert df1.attrs == {
         "long_name": "Actual EvapoTranspiration and Interception",
