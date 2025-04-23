@@ -96,11 +96,11 @@ def wapor_dl(
             region_shape = None  # variable that can be passed to gdal.OpenEx(region_shape, gdal.OF_VECTOR)
         else:
             l3_region = None
-            region_shape = ogr_gdal.to_vsimem(L3_BBS[region])
+            region_shape = ogr_gdal.to_vsimem(coords = L3_BBS[region])
             vsimems.append(region_shape)
             region_code = region[:]
             region = ogr_gdal.get_bounds(
-                region_shape, lrbt=False
+                region_shape, lrbt=True
             )  # list(region_shape.bounds)
     # GEOJSON
     elif isinstance(region, str) and ".tif" not in region:

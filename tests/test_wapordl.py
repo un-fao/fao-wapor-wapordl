@@ -105,6 +105,14 @@ def test_overview_detector_3(tmp_path):
 # AGERA5
 #####
 
+def test_agera5_region_code(tmp_path):
+    variable = "AGERA5-PF-D"
+    region = "BKA"
+    period = ['2018-01-01', '2018-02-01']
+    fh = wapor_map(region, variable, period, tmp_path)
+    info =gdal.Info(fh, format="json")
+    assert info["size"] == [6, 5]
+
 
 def test_agera5_1(tmp_path):
     region = os.path.join(test_data_folder, "1237500.geojson")
