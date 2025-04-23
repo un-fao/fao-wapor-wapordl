@@ -1,13 +1,15 @@
+import concurrent.futures
 import importlib.util
 import logging
 import os
 import time
+from functools import partial
 from itertools import repeat
 from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
-from osgeo import gdal, gdalconst, ogr
+from osgeo import gdal, gdalconst, ogr, osr
 
 from wapordl.unit_convertor import unit_convertor
 
@@ -161,7 +163,7 @@ def cog_dl(
         targetAlignedPixels=True,
         creationOptions=valid_cos[out_ext],
         callback=_callback_func,
-        # warpOptions=['CUTLINE_ALL_TOUCHED','TRUE'],
+        warpOptions=["CUTLINE_ALL_TOUCHED", "TRUE"],
         **warp_kwargs,
     )
     warp = gdal.Warp(out_fn, vrt_fn, options=warp_options)
@@ -205,9 +207,7 @@ def cog_dl(
     return out_fn, vrt_fn
 
 
-def get_stats(
-    path: str
-) -> pd.DataFrame:
+def get_stats(path: str) -> pd.DataFrame:
     """Get statistics for a raster file.
 
     Parameters
@@ -338,9 +338,41 @@ def get_info(url: str) -> dict:
     dict
         The metadata.
     """
-    url = {False: "/vsicurl/", True: "/vsigzip//vsicurl/"}[".gz" in url] + url
+    if not os.path.isfile(url):
+        url = {False: "/vsicurl/", True: "/vsigzip//vsicurl/"}[".gz" in url] + url
     info = gdal.Info(url, format="json")
     return info
+
+
+def get_extent(ds):
+    """Return list of corner coordinates from a gdal Dataset"""
+    xmin, xpixel, _, ymax, _, ypixel = ds.GetGeoTransform()
+    width, height = ds.RasterXSize, ds.RasterYSize
+    xmax = xmin + width * xpixel
+    ymin = ymax + height * ypixel
+    return (xmin, ymin), (xmax, ymax)
+
+
+def reproject_coords(coords, src_srs, tgt_srs):
+    """Reproject a list of x,y coordinates."""
+    trans_coords = []
+    transform = osr.CoordinateTransformation(src_srs, tgt_srs)
+    for x, y in coords:
+        x, y, z = transform.TransformPoint(x, y)
+        trans_coords += [x]
+        trans_coords += [y]
+    return trans_coords
+
+
+def get_wgs84_bounds(path):
+    ds = gdal.Open(path)
+    bounds = get_extent(ds)
+    src_srs = osr.SpatialReference()
+    src_srs.ImportFromWkt(ds.GetProjection())
+    tgt_srs = osr.SpatialReference()
+    tgt_srs.ImportFromEPSG(4326)
+    trans_coords = reproject_coords(bounds, src_srs, tgt_srs)
+    return trans_coords
 
 
 ############
@@ -663,8 +695,11 @@ def zone_stats(raster, vector, identifier, id_value):
         cutlineWhere=f"\"{identifier}\"='{id_value}'",
         cropToCutline=True,
         # creationOptions=["COMPRESS=LZW"],
+        warpOptions=["CUTLINE_ALL_TOUCHED", "TRUE"],
     )
-    output_file = f"/vsimem/x_{time.strftime('%Y-%m-%d_%H%M%S')}_{np.random.randint(9999)}.tif"
+    output_file = (
+        f"/vsimem/x_{time.strftime('%Y-%m-%d_%H%M%S')}_{np.random.randint(9999)}.tif"
+    )
     ds: gdal.Dataset = gdal.Warp(output_file, raster, options=warp_options)
 
     # Get statistics for the clipped dataset.
@@ -681,6 +716,7 @@ def zonal_stats(
     raster: str | gdal.Dataset,
     vector: str,
     identifier: str,
+    n_threads: int = 1,
 ):
     # Open the vector
     vector_ds: gdal.Dataset = gdal.OpenEx(vector, gdal.OF_VECTOR)
@@ -721,10 +757,16 @@ def zonal_stats(
     id_values.discard(None)  # NOTE: features without a ID value are skipped.
 
     # Calculate stats per ID value.
-    # TODO: make this parallel.
-    data_parts = map(
-        zone_stats, repeat(raster), repeat(vector), repeat(identifier), id_values
-    )
+    if n_threads <= 1:
+        data_parts = map(
+            zone_stats, repeat(raster), repeat(vector), repeat(identifier), id_values
+        )
+    else:
+        zone_stats_ = partial(zone_stats, raster, vector, identifier)
+        executor = concurrent.futures.ThreadPoolExecutor(n_threads)
+        futures = [executor.submit(zone_stats_, item) for item in id_values]
+        concurrent.futures.wait(futures)
+        data_parts = [x.result() for x in futures]
 
     # Merge everything.
     data: pd.DataFrame = (
@@ -740,7 +782,7 @@ def zonal_stats(
     return data
 
 
-def make_df_md(raster, include = ["long_name", "units", "overview", "original_units"]):
+def make_df_md(raster, include=["long_name", "units", "overview", "original_units"]):
     info = gdal.Info(raster, format="json")
     try:
         md: dict = info["bands"][0]["metadata"][""]
@@ -748,16 +790,9 @@ def make_df_md(raster, include = ["long_name", "units", "overview", "original_un
     except (KeyError, IndexError, AssertionError):
         logging.warning("No valid metadata found.")
         md = {}
-    df_md = {
-        k: v
-        for k, v in md.items()
-        if k in include
-    }
+    df_md = {k: v for k, v in md.items() if k in include}
     return df_md
+
 
 if __name__ == "__main__":
     ...
-
-    from osgeo import gdal
-
-    extension = ".nc"

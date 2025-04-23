@@ -32,7 +32,7 @@ def wapor_dl(
     ----------
     region : Union[str, List[float], None]
         Defines the area of interest. Can be a three letter code to describe a WaPOR level-3 region,
-        a path to a vector file or a list of 4 floats, specifying a bounding box.
+        a path to a vector or raster file or a list of 4 floats, specifying a bounding box.
     variable : str
         Name of the variable to download.
     period : list, optional
@@ -103,7 +103,7 @@ def wapor_dl(
                 region_shape, lrbt=False
             )  # list(region_shape.bounds)
     # GEOJSON
-    elif isinstance(region, str):
+    elif isinstance(region, str) and ".tif" not in region:
         if "/vsicurl/" in region:
             region_code = "online_resource"
             region_shape = region
@@ -125,8 +125,11 @@ def wapor_dl(
             region_shape = region
 
         l3_region = None
-    # BB
-    elif isinstance(region, list):
+    # BB or BB_from_geotiff
+    elif isinstance(region, list) or (isinstance(region, str) and ".tif" in region):
+        if isinstance(region, str) and ".tif" in region:
+            region = ogr_gdal.get_wgs84_bounds(region)
+
         if not all([region[2] > region[0], region[3] > region[1]]):
             raise ValueError("Invalid bounding box.")  # NOTE: TESTED
         else:
@@ -179,7 +182,9 @@ def wapor_dl(
             overview = determine_overview(
                 md_urls[0][1], region, max_error=max_error, make_plots=make_plots
             )
-            md_urls = [({**md, **{"overview": f"AUTO:{overview}"}}, url) for md, url in md_urls]
+            md_urls = [
+                ({**md, **{"overview": f"AUTO:{overview}"}}, url) for md, url in md_urls
+            ]
             logging.info(f"Using overview `{overview}`.")
         else:
             raise ValueError
@@ -352,6 +357,7 @@ def wapor_ts(
     variable: str,
     period: List[str],
     identifier: str | None = None,
+    n_threads: int = 1,
     overview: str | int = "NONE",
     unit_conversion: str = "none",
     max_error: float = 0.5,
@@ -369,6 +375,11 @@ def wapor_ts(
         Name of the variable to download.
     period : list
         Period for which to download data.
+    identifier : str | None, optional
+        Choose an attribute name contained in the `region` vector file to use when
+        calculating zonal statistics in order to create multiple timeseries, by default None.
+    n_threads : int, optional
+        Specify how many threads to use when calculating zonal statistics, by default 1.
     overview : str | int, optional
         Select which overview from the COGs to use. Can be "NONE" or -1 to use the original data,
         an integer from 0 up to the total of overviews available or "AUTO" for
@@ -412,13 +423,15 @@ def wapor_ts(
 
     if all([isinstance(region, str), len(region) == 3]) or isinstance(region, list):
         if identifier is not None:
-            logging.warning("Using an identifier is only supported when using a vector as `region`, setting `identifier` to `None`.")
+            logging.warning(
+                "Using an identifier is only supported when using a vector as `region`, setting `identifier` to `None`."
+            )
             identifier = None
 
     if identifier is None:
         df = ogr_gdal.get_stats(fp)
     else:
-        df = ogr_gdal.zonal_stats(fp, region, identifier)
+        df = ogr_gdal.zonal_stats(fp, region, identifier, n_threads=n_threads)
 
     ogr_gdal.unlink_vsimems(fp)
 
