@@ -13,7 +13,7 @@ __all__ = [
     "wapor_map",
     "wapor_ts",
 ]
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 
 logging.basicConfig(
     encoding="utf-8",
