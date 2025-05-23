@@ -14,6 +14,93 @@ from wapordl.region_selector import guess_l3_region, l3_bounding_boxes
 from wapordl.variable_descriptions import collect_metadata, date_func
 
 
+def parse_region(region: str | List[float] | None, level: str):
+    """
+
+    Parameters
+    ----------
+    region : Union[str, List[float], None]
+        Defines the area of interest. Can be a three letter code to describe a WaPOR level-3 region,
+        a path to a vector or raster file or a list of 4 floats, specifying a bounding box.
+    level : str
+        One of "L1", "L2", "L3" or "AGERA5".
+
+    Returns
+    -------
+    tuple
+        - The `l3_region` defines which L3 should be searched, its a three letter string or None.
+        - The `region_code` is only used for naming purposes, e.g. in a filename, its a string.
+        - The `region_shape` is a pathlike string that can be opened with GDAL.
+
+    """
+    global L3_BBS
+    # L3-CODE
+    if all([isinstance(region, str), len(region) == 3]):
+        if not region == region.upper():
+            raise ValueError(
+                f"Invalid region code `{region}`, region codes have three capitalized letters."
+            )
+
+        if region not in list(L3_BBS.keys()):
+            logging.info(f"Searching bounding-box for `{region}`.")
+            bb = l3_bounding_boxes(l3_region=region)
+            if len(bb) == 0:
+                raise ValueError(f"Unkown L3 region `{region}`.")
+            else:
+                logging.info(f"Bounding-box found for `{region}`.")
+                L3_BBS = {**L3_BBS, **bb}
+
+        if level == "L3":
+            l3_region = region[:]  # three letter code to filter L3 datasets in GISMGR2.
+            region_code = l3_region[:]  # string to name the region in filenames etc.
+            region_shape = None  # variable that can be passed to gdal.OpenEx(region_shape, gdal.OF_VECTOR)
+        else:
+            l3_region = None
+            region_shape = ogr_gdal.to_vsimem(coords = L3_BBS[region])
+            region_code = region[:]
+    # GEOJSON
+    elif isinstance(region, str) and ".tif" not in region:
+        if "/vsicurl/" in region:
+            region_code = "online_resource"
+            region_shape = region
+        elif not os.path.isfile(region):
+            raise ValueError("Geojson file not found.")  # NOTE: TESTED
+        else:
+            region_code = os.path.split(region)[-1].replace(".geojson", "")
+            epsg, driver, is_two_d = ogr_gdal.check_vector(region)
+            if not np.all([epsg == 4326, driver == "GeoJSON", is_two_d]):
+                ext_ = os.path.splitext(region)[-1]
+                fn_ = os.path.split(region)[-1]
+                out_fn_ = fn_.replace(ext_, "_reprojected.geojson")
+                dim_ = {True: "2D", False: "3D"}[is_two_d]
+                logging.warning(
+                    f"Reprojecting `{fn_}` [EPSG:{epsg}, {dim_}] to `{out_fn_}` [EPSG:4326, 2D]."
+                )
+                region = ogr_gdal.reproject_vector(region, epsg=4326, in_memory=True)
+            region_shape = region
+
+        l3_region = None
+    # BB or BB_from_geotiff
+    elif isinstance(region, list) or (isinstance(region, str) and ".tif" in region):
+        if isinstance(region, str) and ".tif" in region:
+            region = ogr_gdal.get_wgs84_bounds(region)
+
+        if not all([region[2] > region[0], region[3] > region[1]]):
+            raise ValueError("Invalid bounding box.")  # NOTE: TESTED
+        else:
+            region_code = "bb"
+            region_shape = ogr_gdal.to_vsimem(bb=region)
+        l3_region = None
+    else:
+        raise ValueError(f"Invalid value for region ({region}).")  # NOTE: TESTED
+
+    ## Check l3_region code.
+    if level == "L3" and isinstance(l3_region, type(None)):
+        l3_region = guess_l3_region(region_shape)
+        region_code += f".{l3_region}"
+
+    return l3_region, region_code, region_shape
+
 def wapor_dl(
     region: str | List[float] | None,
     variable: str,
@@ -65,85 +152,19 @@ def wapor_dl(
         speciyfing statistics.
     """
 
-    global L3_BBS
+
 
     ## Retrieve info from variable name.
     level, _, tres = variable.split("-")
 
-    vsimems = []
+    l3_region, region_code, region_shape = parse_region(region, level)
 
-    ## Check if region is valid.
-    # L3-CODE
-    if all([isinstance(region, str), len(region) == 3]):
-        if not region == region.upper():
-            raise ValueError(
-                f"Invalid region code `{region}`, region codes have three capitalized letters."
-            )
-
-        if region not in list(L3_BBS.keys()):
-            logging.info(f"Searching bounding-box for `{region}`.")
-            bb = l3_bounding_boxes(l3_region=region)
-            if len(bb) == 0:
-                raise ValueError(f"Unkown L3 region `{region}`.")
-            else:
-                logging.info(f"Bounding-box found for `{region}`.")
-                L3_BBS = {**L3_BBS, **bb}
-
-        if level == "L3":
-            l3_region = region[:]  # three letter code to filter L3 datasets in GISMGR2.
-            region = None  # used for clipping, can be None, list(bb) or path/to/file.geojson.
-            region_code = l3_region[:]  # string to name the region in filenames etc.
-            region_shape = None  # variable that can be passed to gdal.OpenEx(region_shape, gdal.OF_VECTOR)
-        else:
-            l3_region = None
-            region_shape = ogr_gdal.to_vsimem(coords = L3_BBS[region])
-            vsimems.append(region_shape)
-            region_code = region[:]
-            region = ogr_gdal.get_bounds(
-                region_shape, lrbt=True
-            )  # list(region_shape.bounds)
-    # GEOJSON
-    elif isinstance(region, str) and ".tif" not in region:
-        if "/vsicurl/" in region:
-            region_code = "online_resource"
-            region_shape = region
-        elif not os.path.isfile(region):
-            raise ValueError("Geojson file not found.")  # NOTE: TESTED
-        else:
-            region_code = os.path.split(region)[-1].replace(".geojson", "")
-            epsg, driver, is_two_d = ogr_gdal.check_vector(region)
-            if not np.all([epsg == 4326, driver == "GeoJSON", is_two_d]):
-                ext_ = os.path.splitext(region)[-1]
-                fn_ = os.path.split(region)[-1]
-                out_fn_ = fn_.replace(ext_, "_reprojected.geojson")
-                dim_ = {True: "2D", False: "3D"}[is_two_d]
-                logging.warning(
-                    f"Reprojecting `{fn_}` [EPSG:{epsg}, {dim_}] to `{out_fn_}` [EPSG:4326, 2D]."
-                )
-                region = ogr_gdal.reproject_vector(region, epsg=4326, in_memory=True)
-                vsimems.append(region)
-            region_shape = region
-
-        l3_region = None
-    # BB or BB_from_geotiff
-    elif isinstance(region, list) or (isinstance(region, str) and ".tif" in region):
-        if isinstance(region, str) and ".tif" in region:
-            region = ogr_gdal.get_wgs84_bounds(region)
-
-        if not all([region[2] > region[0], region[3] > region[1]]):
-            raise ValueError("Invalid bounding box.")  # NOTE: TESTED
-        else:
-            region_code = "bb"
-            region_shape = ogr_gdal.to_vsimem(bb=region)
-            vsimems.append(region_shape)
-        l3_region = None
+    if isinstance(region_shape, type(None)):
+        vsimems = list()
+    elif "/vsimem/" in region_shape:
+        vsimems = [region_shape]
     else:
-        raise ValueError(f"Invalid value for region ({region}).")  # NOTE: TESTED
-
-    ## Check l3_region code.
-    if level == "L3" and isinstance(l3_region, type(None)):
-        l3_region = guess_l3_region(region_shape)
-        region_code += f".{l3_region}"
+        vsimems = list()
 
     ## Check the dates in period.
     if not isinstance(period, type(None)):
@@ -172,15 +193,15 @@ def wapor_dl(
 
     # Determine overview
     if overview in ["auto", "AUTO"]:
-        if isinstance(region, type(None)):
+        if isinstance(region_shape, type(None)):
             logging.warning(
                 "Determining an overview level for an entire L3 region is unsupported, setting overview to `'NONE'`."
             )
             overview = "NONE"
-        elif isinstance(region, str) or isinstance(region, list):
+        elif isinstance(region_shape, str) or isinstance(region_shape, list):
             logging.info("Searching for optimal overview.")
             overview = determine_overview(
-                md_urls[0][1], region, max_error=max_error, make_plots=make_plots
+                md_urls[0][1], region_shape, max_error=max_error, make_plots=make_plots
             )
             md_urls = [
                 ({**md, **{"overview": f"AUTO:{overview}"}}, url) for md, url in md_urls
@@ -200,18 +221,8 @@ def wapor_dl(
         "yRes": abs(yres) * 2 ** (overview_ + 1),
         **warp_kwargs,
     }
-    # BB | L3-code + L1/L2-variable (output = EPSG:4326)
-    if isinstance(region, list):
-        warp_kwargs["outputBounds"] = region
-        warp_kwargs["outputBoundsSRS"] = "epsg:4326"
-    # GEOJSON (output = EPSG:4326)
-    elif isinstance(region, str):
-        warp_kwargs["cutlineDSName"] = region
-    # L3-code + L3-variable (output != EPSG:4326)
-    elif isinstance(region, type(None)):
-        ...
-    else:
-        ...
+    if isinstance(region_shape, str):
+        warp_kwargs["cutlineDSName"] = region_shape
 
     ## Check if region overlaps with datasets bounding-box.
     if not isinstance(region_shape, type(None)) and level != "AGERA5":
