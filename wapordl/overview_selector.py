@@ -155,6 +155,7 @@ def geot_area(
                 f"{area}_{os.path.split(shape_fh)[-1].replace('.geojson', '')}.png",
             )
             fig.savefig(plot_fh)
+        plt.close(fig)
     else:
         ...
 
@@ -285,6 +286,7 @@ def determine_overview(
                 f"{overview}_{os.path.split(shape_fh)[-1].replace('.geojson', '')}.png",
             )
             fig.savefig(plot_fh)
+        plt.close(fig)
     else:
         ...
 
