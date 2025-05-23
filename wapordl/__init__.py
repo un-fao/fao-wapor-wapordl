@@ -8,10 +8,14 @@ from wapordl.main import (
     wapor_ts,
 )
 
+from wapordl import variable_descriptions, region_selector
+
 __all__ = [
     "wapor_dl",
     "wapor_map",
     "wapor_ts",
+    "variable_descriptions",
+    "region_selector",
 ]
 __version__ = "1.1.2"
 
