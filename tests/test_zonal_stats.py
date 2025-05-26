@@ -19,8 +19,10 @@ test_data_folder = pathlib.Path(module_path).parent / "test_data"
 vectors_ids = [
     (os.path.join(test_data_folder, "polygon_EPSG32636.gpkg"), "name"),
     (os.path.join(test_data_folder, "polygon_EPSG32636.gpkg"), "bla"),
+    (os.path.join(test_data_folder, "polygon_EPSG32636.gpkg"), None),
     (os.path.join(test_data_folder, "multipolygon_EPSG4326.gpkg"), "name"),
     (os.path.join(test_data_folder, "multipolygon_EPSG4326.gpkg"), "bla"),
+    (os.path.join(test_data_folder, "multipolygon_EPSG4326.gpkg"), None),
 ]
 
 
@@ -114,15 +116,6 @@ def test_invalid_id():
     assert "not found in field names" in str(e.value)
 
 
-def test_invalid_geomtype():
-    raster = os.path.join(test_data_folder, "GEZ_L3-AETI-D_1_none.tif")
-    vector = os.path.join(test_data_folder, "point_EPSG4326.gpkg")
-    identifier = "name"
-    with pytest.raises(NotImplementedError) as e:
-        _ = wapordl.toolbox.ogr_gdal.zonal_stats(raster, vector, identifier)
-    assert "`zonal_stats` for geometry type" in str(e.value)
-
-
 if __name__ == "__main__":
-    vector = vectors_ids[0][0]
-    identifier = vectors_ids[0][1]
+    vector = vectors_ids[2][0]
+    identifier = vectors_ids[2][1]

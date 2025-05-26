@@ -1,6 +1,5 @@
 import glob
 import os
-
 import pathlib
 
 import numpy as np
@@ -105,12 +104,13 @@ def test_overview_detector_3(tmp_path):
 # AGERA5
 #####
 
+
 def test_agera5_region_code(tmp_path):
     variable = "AGERA5-PF-D"
     region = "BKA"
-    period = ['2018-01-01', '2018-02-01']
+    period = ["2018-01-01", "2018-02-01"]
     fh = wapor_map(region, variable, period, tmp_path)
-    info =gdal.Info(fh, format="json")
+    info = gdal.Info(fh, format="json")
     assert info["size"] == [6, 5]
 
 
@@ -272,7 +272,7 @@ def test_general_5(variable):
     overview = 3
     bb = [25, -17, 26, -16]
     period = ["2021-01-12", "2021-01-25"]
-    _ = wapor_ts(bb, variable, period, overview)
+    _ = wapor_ts(bb, variable, period, overview=overview)
 
 
 def test_general_6(tmp_path):
@@ -541,6 +541,7 @@ def test_23(tmp_path):
         test_data_folder, "test_MUV_UTM36N_shp/test_MUV_UTM36N.shp"
     )
     _ = wapor_map(region_shpfile, "L1-T-D", period, tmp_path)
+
 
 #####
 # UNIT CONVERSION CHECKS

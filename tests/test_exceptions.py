@@ -79,7 +79,7 @@ def test_8():
     region = os.path.join(test_data_folder, "1237500.geojson")
     with pytest.raises(ValueError) as e:
         _ = wapordl.wapor_ts(
-            region, "L1-AETI-A", ["2021-01-15", "2021-01-01"], overview
+            region, "L1-AETI-A", ["2021-01-15", "2021-01-01"], overview=overview
         )
     assert "Invalid period." in str(e.value)
 
@@ -89,7 +89,7 @@ def test_11():
     nodata_period = ["2015-01-01", "2016-01-01"]
     region = os.path.join(test_data_folder, "1237500.geojson")
     with pytest.raises(ValueError) as e:
-        _ = wapordl.wapor_ts(region, "L2-AETI-D", nodata_period, overview)
+        _ = wapordl.wapor_ts(region, "L2-AETI-D", nodata_period, overview=overview)
     assert "No files found for selected region, variable and period." in str(e.value)
 
 
@@ -109,7 +109,7 @@ def test_13():
     region = os.path.join(test_data_folder, "1237500.geojson")
     with pytest.raises(ValueError) as e:
         _ = wapordl.wapor_ts(
-            region, "L2-AETI-D", period, overview, unit_conversion="pentad"
+            region, "L2-AETI-D", period, overview=overview, unit_conversion="pentad"
         )
     assert "Please select one of " in str(e.value)
 
