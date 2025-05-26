@@ -11,6 +11,8 @@ import wapordl.toolbox.ogr_gdal as ogr_gdal
 from wapordl.bounding_boxes import L2_BB, L3_BBS
 from wapordl.overview_selector import determine_overview
 from wapordl.region_selector import guess_l3_region, l3_bounding_boxes
+from wapordl.toolbox.ts_queries import get_ts
+from wapordl.unit_convertor import df_unit_convertor
 from wapordl.variable_descriptions import collect_metadata, date_func
 
 
@@ -56,7 +58,7 @@ def parse_region(region: str | List[float] | None, level: str):
             region_shape = None  # variable that can be passed to gdal.OpenEx(region_shape, gdal.OF_VECTOR)
         else:
             l3_region = None
-            region_shape = ogr_gdal.to_vsimem(coords = L3_BBS[region])
+            region_shape = ogr_gdal.to_vsimem(coords=L3_BBS[region])
             region_code = region[:]
     # GEOJSON
     elif isinstance(region, str) and ".tif" not in region:
@@ -100,6 +102,7 @@ def parse_region(region: str | List[float] | None, level: str):
         region_code += f".{l3_region}"
 
     return l3_region, region_code, region_shape
+
 
 def wapor_dl(
     region: str | List[float] | None,
@@ -152,7 +155,11 @@ def wapor_dl(
         speciyfing statistics.
     """
 
-
+    valid_units = ["none", "dekad", "day", "month", "year"]
+    if unit_conversion not in valid_units:
+        raise ValueError(
+            f"Please select one of {valid_units} instead of {unit_conversion}."
+        )  # NOTE: TESTED
 
     ## Retrieve info from variable name.
     level, _, tres = variable.split("-")
@@ -336,12 +343,6 @@ def wapor_map(
     if not os.path.isdir(folder):
         os.makedirs(folder)
 
-    valid_units = ["none", "dekad", "day", "month", "year"]
-    if unit_conversion not in valid_units:
-        raise ValueError(
-            f"Please select one of {valid_units} instead of {unit_conversion}."
-        )  # NOTE: TESTED
-
     ## Call wapor_dl to create a GeoTIFF.
     fp = wapor_dl(
         region,
@@ -367,6 +368,7 @@ def wapor_ts(
     region: Union[str, List[float], None],
     variable: str,
     period: List[str],
+    method: str = "original",
     identifier: str | None = None,
     n_threads: int = 1,
     overview: str | int = "NONE",
@@ -413,38 +415,35 @@ def wapor_ts(
         Timeseries output.
     """
 
-    valid_units = ["none", "dekad", "day", "month", "year"]
-    if unit_conversion not in valid_units:
-        raise ValueError(
-            f"Please select one of {valid_units} instead of {unit_conversion}."
-        )  # NOTE: TESTED
+    level = variable.split("-")[0]
+    l3_region, _, region_shape = parse_region(region, level)
 
-    ## Call wapor_dl to create a timeseries.
-    fp = wapor_dl(
-        region,
-        variable,
-        period=period,
-        overview=overview,
-        unit_conversion=unit_conversion,
-        folder=None,
-        max_error=max_error,
-        make_plots=make_plots,
-        warp_kwargs=warp_kwargs,
-    )
+    if method == "original":
+        fp = wapor_dl(
+            region,
+            variable,
+            period=period,
+            overview=overview,
+            unit_conversion=unit_conversion,
+            folder=None,
+            max_error=max_error,
+            make_plots=make_plots,
+            warp_kwargs=warp_kwargs,
+        )
+        if (identifier is None) or (region_shape is None):
+            df = ogr_gdal.get_stats(fp)
+        else:
+            df = ogr_gdal.zonal_stats(fp, region_shape, identifier, n_threads=n_threads)
+        ogr_gdal.unlink_vsimems(fp)
 
-    if all([isinstance(region, str), len(region) == 3]) or isinstance(region, list):
-        if identifier is not None:
-            logging.warning(
-                "Using an identifier is only supported when using a vector as `region`, setting `identifier` to `None`."
-            )
-            identifier = None
-
-    if identifier is None:
-        df = ogr_gdal.get_stats(fp)
-    else:
-        df = ogr_gdal.zonal_stats(fp, region, identifier, n_threads=n_threads)
-
-    ogr_gdal.unlink_vsimems(fp)
+    elif method == "new":
+        df = get_ts(
+            region_shape, period, variable, l3_region=l3_region, identifier=identifier
+        )
+        if isinstance(identifier, type(None)):
+            df = df.drop("None", axis=1)
+        if unit_conversion != "none":
+            df = df_unit_convertor(df, unit_conversion)
 
     return df
 

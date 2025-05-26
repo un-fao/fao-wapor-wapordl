@@ -13,6 +13,7 @@ use_xarray = all(
 if use_xarray:
     import xarray as xr
 
+
 def __make_band_names__(length):
     letters = [x for x in ascii_lowercase + ascii_uppercase]
     i = 2
@@ -21,6 +22,42 @@ def __make_band_names__(length):
             letters.append(letter * i)
         i += 1
     return letters[:length]
+
+
+def df_unit_convertor(df: pd.DataFrame, unit_conversion: str):
+    source_unit = df.attrs["units"]
+
+    source_unit_split = source_unit.split("/")
+    source_unit_q = "/".join(source_unit_split[:-1])
+    source_unit_time = source_unit_split[-1]
+
+    conversion = {
+        ("day", "day"): 1,
+        ("day", "dekad"): df["number_of_days"].dt.days,
+        ("day", "month"): df["start_date"].dt.days_in_month,
+        ("day", "year"): 365,
+        ("dekad", "day"): 1.0 / df["number_of_days"].dt.days,
+        ("dekad", "month"): 3,
+        ("dekad", "year"): 36,
+        ("dekad", "dekad"): 1,
+        ("month", "day"): 1 / df["start_date"].dt.days_in_month,
+        ("month", "dekad"): 1 / 3,
+        ("month", "month"): 1,
+        ("month", "year"): 12,
+        ("year", "dekad"): 1 / 36,
+        ("year", "day"): 1 / 365,
+        ("year", "month"): 1 / 12,
+        ("year", "year"): 1,
+    }[(source_unit_time, unit_conversion)]
+
+    df[["mean", "minimum", "maximum"]] = df[["mean", "minimum", "maximum"]].mul(
+        conversion, axis=0
+    )
+
+    df.attrs["original_units"] = df.attrs["units"]
+    df.attrs["units"] = f"{source_unit_q}/{unit_conversion}"
+
+    return df
 
 
 def unit_convertor(

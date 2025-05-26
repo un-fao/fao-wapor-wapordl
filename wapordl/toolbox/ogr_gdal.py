@@ -1,11 +1,8 @@
-import concurrent.futures
 import importlib.util
 import logging
 import os
 import time
-from functools import partial
-from itertools import repeat
-from typing import List, Tuple
+from typing import List, Literal, Tuple
 
 import numpy as np
 import pandas as pd
@@ -380,6 +377,74 @@ def get_wgs84_bounds(path):
 ############
 
 
+def make_union(geoms: List[ogr.Geometry], format: Literal["json", "wkt"] | None = None):
+    final_geom = geoms.pop(0)
+    while geoms:
+        geom_ = geoms.pop(0)
+        final_geom = final_geom.Union(geom_)
+    if format == "json":
+        return final_geom.ExportToJson()
+    elif format == "wkt":
+        return final_geom.ExportToWkt()
+    else:
+        return final_geom
+
+
+def group_geoms_on_attribute(
+    vector, identifier, format: Literal["json", "wkt"] | None = None
+):
+    # Open the vector
+    vector_ds: gdal.Dataset = gdal.OpenEx(vector, gdal.OF_VECTOR)
+
+    # Check the number of layers.
+    n_layers = vector_ds.GetLayerCount()
+    if n_layers > 1:
+        logging.warning(
+            f"`{vector_ds}` has {n_layers} layers, only the first layer will be processed."
+        )
+
+    # Open the first layer.
+    layer: List[ogr.Feature] = vector_ds.GetLayer(0)
+
+    spatial_ref: osr.SpatialReference = layer.GetSpatialRef()
+    srs = spatial_ref.ExportToWkt()
+
+    # Determine the field names.
+    layer_def: ogr.FeatureDefn = layer.GetLayerDefn()
+    field_names = [
+        getattr(layer_def.GetFieldDefn(x), "name")
+        for x in range(layer_def.GetFieldCount())
+    ]
+
+    # Check if chosen ID is valid.
+    if not isinstance(identifier, type(None)) and (identifier not in field_names):
+        raise ValueError(
+            f"Identifier `{identifier}` not found in field names `{field_names}`."
+        )
+
+    geoms: dict[str, List] = dict()
+    for ftr in layer:
+        if isinstance(identifier, type(None)):
+            ftr_name = pd.NA
+        else:
+            ftr_name = ftr.GetField(identifier)
+
+        if isinstance(ftr_name, type(None)):
+            ftr_name = pd.NA
+
+        geom: ogr.Geometry = ftr.geometry()
+        if ftr_name in geoms.keys():
+            geoms[ftr_name].append(geom.Clone())
+        else:
+            geoms[ftr_name] = [geom.Clone()]
+
+    unions = {
+        ftr_name: make_union(geoms, format=format) for ftr_name, geoms in geoms.items()
+    }
+
+    return unions, srs
+
+
 def get_geom(
     fh: str, lyr_idx: int = 0, ftr_idx: int = 0
 ) -> Tuple[ogr.Geometry, ogr.Feature, ogr.Layer, gdal.Dataset]:
@@ -555,7 +620,7 @@ def reproject_vector(fh: str, epsg=4326, in_memory=False) -> str:
     out_fh = fh.replace(ext, f"_reprojected_{epsg}.geojson")
 
     if "/vsimem/" not in out_fh and in_memory:
-        out_fh = "/vsimem/" + out_fh
+        out_fh = f"/vsimem/x_{time.strftime('%Y-%m-%d_%H%M%S')}_{np.random.randint(9999)}.geojson"
 
     options = gdal.VectorTranslateOptions(
         dstSRS=f"EPSG:{epsg}",
@@ -688,12 +753,12 @@ def to_vsimem(bb: List[float] = None, coords: List[List[float]] = None) -> str:
 #################
 
 
-def zone_stats(raster, vector, identifier, id_value):
+def zone_stats(raster, wkt, wkt_srs):
     # Clip raster to the geometry.
     warp_options = gdal.WarpOptions(
-        cutlineDSName=vector,
-        cutlineWhere=f"\"{identifier}\"='{id_value}'",
+        cutlineWKT=wkt,
         cropToCutline=True,
+        cutlineSRS=wkt_srs,
         # creationOptions=["COMPRESS=LZW"],
         warpOptions=["CUTLINE_ALL_TOUCHED", "TRUE"],
     )
@@ -704,7 +769,6 @@ def zone_stats(raster, vector, identifier, id_value):
 
     # Get statistics for the clipped dataset.
     data = get_stats(ds)
-    data[identifier] = id_value
 
     # Unlink.
     unlink_vsimems(output_file)
@@ -718,60 +782,31 @@ def zonal_stats(
     identifier: str,
     n_threads: int = 1,
 ):
-    # Open the vector
-    vector_ds: gdal.Dataset = gdal.OpenEx(vector, gdal.OF_VECTOR)
+    unions, wkt_srs = group_geoms_on_attribute(vector, identifier, format="wkt")
 
-    # Check the number of layers.
-    n_layers = vector_ds.GetLayerCount()
-    if n_layers > 1:
-        logging.warning(
-            f"`{vector_ds}` has {n_layers} layers, only the first layer will be processed."
-        )
-
-    # Open the first layer.
-    layer: ogr.Layer = vector_ds.GetLayer(0)
-
-    # Check the geometry type.
-    layer_def: ogr.FeatureDefn = layer.GetLayerDefn()
-    geom_type = ogr.GeometryTypeToName(layer_def.GetGeomType())
-    req_geom_type = ["Polygon", "Multi Polygon"]
-    if geom_type not in req_geom_type:
-        raise NotImplementedError(
-            f"`zonal_stats` for geometry type `{geom_type}` has not been implemented. Use one of `{req_geom_type}`."
-        )
-
-    # Determine the field names.
-    field_names = [
-        getattr(layer_def.GetFieldDefn(x), "name")
-        for x in range(layer_def.GetFieldCount())
-    ]
-
-    # Check if chosen ID is valid.
-    if identifier not in field_names:
-        raise ValueError(
-            f"Identifier `{identifier}` not found in field names `{field_names}`."
-        )
-
-    # Determine ID values over which to loop.
-    id_values = set([feature.GetField(identifier) for feature in layer])
-    id_values.discard(None)  # NOTE: features without a ID value are skipped.
+    data_parts = []
+    for name, wkt in unions.items():
+        data = zone_stats(raster, wkt, wkt_srs)
+        if isinstance(identifier, type(None)):
+            identifier = "None"
+        data[identifier] = name
+        data_parts.append(data)
 
     # Calculate stats per ID value.
-    if n_threads <= 1:
-        data_parts = map(
-            zone_stats, repeat(raster), repeat(vector), repeat(identifier), id_values
-        )
-    else:
-        zone_stats_ = partial(zone_stats, raster, vector, identifier)
-        executor = concurrent.futures.ThreadPoolExecutor(n_threads)
-        futures = [executor.submit(zone_stats_, item) for item in id_values]
-        concurrent.futures.wait(futures)
-        data_parts = [x.result() for x in futures]
+    # if n_threads <= 1:
+    #     data_parts = map(
+    #         zone_stats, repeat(raster), repeat(vector), repeat(identifier), id_values
+    #     )
+    # else:
+    #     zone_stats_ = partial(zone_stats, raster, vector, identifier)
+    #     executor = concurrent.futures.ThreadPoolExecutor(n_threads)
+    #     futures = [executor.submit(zone_stats_, item) for item in id_values]
+    #     concurrent.futures.wait(futures)
+    #     data_parts = [x.result() for x in futures]
 
-    # Merge everything.
     data: pd.DataFrame = (
         pd.concat(data_parts)
-        .dropna()
+        .dropna(subset=["mean", "minimum", "maximum"])
         .sort_values([identifier, "start_date"])
         .reset_index(drop=True)
     )
